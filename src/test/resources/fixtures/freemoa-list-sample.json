@@ -1,0 +1,56 @@
+{
+  "NOW": 1794975050,
+  "ERROR": { "NO": 0, "MSG": "" },
+  "DATA": {
+    "PROJECT": {
+      "LIST": [
+        {
+          "proj_idx": "48588",
+          "title": " 기 운영중인 카페24기반 반응형웹의 PHP 버전 업데이트 ",
+          "edate": "2026-11-30",
+          "client_id": "someone@example.com",
+          "during": "30",
+          "cost_min": "0",
+          "cost_max": "0",
+          "pv_smallnm": "경기",
+          "plan_nm": "상세기획 보유",
+          "workType": "1",
+          "fld": "총괄",
+          "fld_nm_2nd": "웹",
+          "INS_TIME": "2026-11-17 13:52:38",
+          "proj_language": "PHP, php 8.5, Linux 8.1, MySQL,, Apache, mysql ",
+          "txt": "운영중인 4개 사이트의 PHP버전 업데이트(7.4->8.5)",
+          "ALL_APPLY_COUNT": "48"
+        },
+        {
+          "proj_idx": "48589",
+          "title": "PHP 쇼핑몰 연동 실시간 상담 시스템 자체 구축",
+          "edate": "2026-12-01",
+          "client_id": "someone2@example.com",
+          "during": "150",
+          "cost_min": "8000",
+          "cost_max": "10000",
+          "pv_smallnm": "서울",
+          "plan_nm": "아이디어 단계",
+          "workType": "1",
+          "fld": "개발",
+          "fld_nm_2nd": "웹",
+          "INS_TIME": "2026-11-17 14:09:44",
+          "proj_language": "",
+          "txt": "",
+          "ALL_APPLY_COUNT": "40"
+        }
+      ],
+      "PAGINATION": {
+        "beginPage": 1,
+        "endPage": 10,
+        "prevPage": null,
+        "nextPage": 11,
+        "currentPage": 1,
+        "totalRows": "4359",
+        "offset": 0
+      },
+      "whereList": { "fcd": null, "fnd2_cd": null }
+    }
+  }
+}
