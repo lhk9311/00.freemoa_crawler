@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lhk.freemoa.health.HealthMapper">
+
+    <!-- DUAL: Oracle의 1행짜리 더미 테이블. FROM 절이 필수인 Oracle에서 계산/확인용으로 쓴다 -->
+    <select id="selectPing" resultType="string">
+        SELECT 'ok' FROM DUAL
+    </select>
+
+    <!-- USER_TABLES: 현재 접속 계정(=스키마)이 소유한 테이블 목록 (데이터 딕셔너리 뷰) -->
+    <select id="selectMyTables" resultType="string">
+        SELECT TABLE_NAME
+          FROM USER_TABLES
+         ORDER BY TABLE_NAME
+    </select>
+
+</mapper>

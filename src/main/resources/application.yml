@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: freemoa-crawler
+  datasource:
+    driver-class-name: oracle.jdbc.OracleDriver
+    # 서비스명 방식 접속: //호스트:포트/서비스명  (SID 방식은 호스트:포트:SID)
+    url: jdbc:oracle:thin:@//localhost:1521/FREEPDB1
+    username: freemoa
+    # 비밀번호는 코드에 쓰지 않고 환경변수로 주입한다 (IntelliJ 실행 설정 > Environment variables > DB_PASSWORD=...)
+    password: ${DB_PASSWORD}
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    # DB 컬럼 PROJ_IDX -> 자바 필드 projIdx 자동 매핑
+    map-underscore-to-camel-case: true
+    # Oracle에 null을 바인딩할 때 '부적합한 열 유형: 1111' 에러 방지
+    jdbc-type-for-null: NULL
+
+logging:
+  level:
+    # 실행되는 SQL을 로그로 확인 (mapper 패키지 DEBUG)
+    com.lhk.freemoa: DEBUG

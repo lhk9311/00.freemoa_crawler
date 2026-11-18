@@ -1,0 +1,21 @@
+# Maven
+target/
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로컬 설정 / 비밀정보 (절대 커밋 금지)
+application-local.yml
+*.env
+.env
+
+# 산출물
+output/
+*.xlsx
+logs/
