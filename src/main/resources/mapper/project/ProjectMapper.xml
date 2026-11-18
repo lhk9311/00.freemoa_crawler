@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lhk.freemoa.project.mapper.ProjectMapper">
+
+    <!--
+        IN 절 동적 생성: <foreach>가 (48588, 48589, ...) 형태로 만들어준다.
+        주의: Oracle은 IN 목록이 1000개를 넘으면 ORA-01795 에러가 난다.
+              지금은 max-pages-limit(30) x 10건 = 최대 300건이라 괜찮지만, 대량 처리라면 1000개씩 나눠야 한다.
+        #{} 는 PreparedStatement의 ? 바인딩이라 SQL 인젝션에 안전하다. (${}는 문자열 그대로 붙여서 위험)
+    -->
+    <select id="selectExistingProjIdx" resultType="long">
+        SELECT PROJ_IDX
+          FROM TB_PROJECT
+         WHERE PROJ_IDX IN
+        <foreach collection="projIdxList" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <!--
+        MERGE INTO : "있으면 UPDATE, 없으면 INSERT"를 SQL 한 문장으로 처리 (upsert)
+
+        MERGE INTO 대상테이블 T
+        USING 비교할데이터 S          <- 여기서는 값 1건만 비교하므로 DUAL(1행 더미 테이블)을 쓴다
+           ON (매칭 조건)
+        WHEN MATCHED     THEN UPDATE ...   <- 조건에 맞는 행이 있으면
+        WHEN NOT MATCHED THEN INSERT ...   <- 없으면
+
+        - ON 절에 쓴 컬럼(PROJ_IDX)은 UPDATE SET에 쓸 수 없다 (ORA-38104)
+        - FIRST_CRAWLED_AT은 UPDATE에서 건드리지 않는다 -> 최초 수집일이 보존된다
+        - CLOB 컬럼은 jdbcType=CLOB을 명시해서 긴 문자열도 안전하게 바인딩한다
+    -->
+    <update id="merge">
+        MERGE INTO TB_PROJECT T
+        USING DUAL
+           ON (T.PROJ_IDX = #{projIdx})
+        WHEN MATCHED THEN
+            UPDATE SET
+                   T.TITLE           = #{title}
+                 , T.CATEGORY        = #{category}
+                 , T.SUB_CATEGORY    = #{subCategory}
+                 , T.REGION          = #{region}
+                 , T.PLAN_STATUS     = #{planStatus}
+                 , T.WORK_TYPE       = #{workType}
+                 , T.DURATION_DAYS   = #{durationDays}
+                 , T.COST_MIN        = #{costMin}
+                 , T.COST_MAX        = #{costMax}
+                 , T.APPLY_COUNT     = #{applyCount}
+                 , T.SKILL_RAW       = #{skillRaw}
+                 , T.SUMMARY         = #{summary, jdbcType=CLOB}
+                 , T.POSTED_AT       = #{postedAt}
+                 , T.DEADLINE        = #{deadline}
+                 , T.LAST_CRAWLED_AT = SYSDATE
+        WHEN NOT MATCHED THEN
+            INSERT (
+                   PROJ_IDX, TITLE, CATEGORY, SUB_CATEGORY, REGION
+                 , PLAN_STATUS, WORK_TYPE, DURATION_DAYS, COST_MIN, COST_MAX
+                 , APPLY_COUNT, SKILL_RAW, SUMMARY, POSTED_AT, DEADLINE
+                 , FIRST_CRAWLED_AT, LAST_CRAWLED_AT
+            ) VALUES (
+                   #{projIdx}, #{title}, #{category}, #{subCategory}, #{region}
+                 , #{planStatus}, #{workType}, #{durationDays}, #{costMin}, #{costMax}
+                 , #{applyCount}, #{skillRaw}, #{summary, jdbcType=CLOB}, #{postedAt}, #{deadline}
+                 , SYSDATE, SYSDATE
+            )
+    </update>
+
+</mapper>

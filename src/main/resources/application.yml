@@ -17,6 +17,11 @@ mybatis:
     # Oracle에 null을 바인딩할 때 '부적합한 열 유형: 1111' 에러 방지
     jdbc-type-for-null: NULL
 
+crawler:
+  base-url: https://www.freemoa.net
+  delay: 1s            # 페이지 사이 대기 (사이트 부담 줄이기)
+  max-pages-limit: 30  # 한 번에 수집할 수 있는 최대 페이지 (1페이지 = 10건)
+
 logging:
   level:
     # 실행되는 SQL을 로그로 확인 (mapper 패키지 DEBUG)

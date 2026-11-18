@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lhk.freemoa.project.mapper.SkillMapper">
+
+    <!--
+        WHEN MATCHED 없이 NOT MATCHED만 쓰면 "없을 때만 INSERT"가 된다.
+
+        알아둘 것: MERGE 안의 SEQ_SKILL.NEXTVAL은 실제로 INSERT가 안 일어나도(이미 있어도)
+        번호가 소모될 수 있다. 그래서 SKILL_ID가 1, 2, 5, 9 처럼 중간이 비는 게 정상이다.
+        시퀀스는 "유일한 번호"를 보장할 뿐 "연속된 번호"를 보장하지 않는다.
+    -->
+    <update id="mergeSkill">
+        MERGE INTO TB_SKILL T
+        USING DUAL
+           ON (T.SKILL_KEY = #{skillKey})
+        WHEN NOT MATCHED THEN
+            INSERT (SKILL_ID, SKILL_NAME, SKILL_KEY)
+            VALUES (SEQ_SKILL.NEXTVAL, #{skillName}, #{skillKey})
+    </update>
+
+    <select id="selectSkillIdByKey" resultType="long">
+        SELECT SKILL_ID
+          FROM TB_SKILL
+         WHERE SKILL_KEY = #{skillKey}
+    </select>
+
+</mapper>

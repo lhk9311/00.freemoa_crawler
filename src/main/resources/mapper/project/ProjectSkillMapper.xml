@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lhk.freemoa.project.mapper.ProjectSkillMapper">
+
+    <!-- 공고의 기술스택은 "전부 지우고 다시 넣기" 방식으로 갱신한다. 비교 로직보다 단순하고 실수가 적다 -->
+    <delete id="deleteByProjIdx">
+        DELETE FROM TB_PROJECT_SKILL
+         WHERE PROJ_IDX = #{projIdx}
+    </delete>
+
+    <insert id="insert">
+        INSERT INTO TB_PROJECT_SKILL (PROJ_IDX, SKILL_ID)
+        VALUES (#{projIdx}, #{skillId})
+    </insert>
+
+</mapper>
