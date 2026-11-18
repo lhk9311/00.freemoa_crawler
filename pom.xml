@@ -21,6 +21,8 @@
     <properties>
         <java.version>17</java.version>
         <mybatis-starter.version>3.0.4</mybatis-starter.version>
+        <!-- main 메서드가 2개(Spring용, 순수 Java용)라서 실행 jar의 진입점을 명시 -->
+        <start-class>com.lhk.freemoa.FreemoaCrawlerApplication</start-class>
     </properties>
 
     <dependencies>
