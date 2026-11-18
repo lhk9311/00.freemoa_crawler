@@ -1,0 +1,15 @@
+### DB 연결 확인
+GET http://localhost:8080/health/db
+
+### 수집 실행 (java, 2페이지)
+POST http://localhost:8080/api/crawl?keyword=java&maxPages=2
+
+### 수집 실행 (전체, 3페이지)
+POST http://localhost:8080/api/crawl?maxPages=3
+
+### 잘못된 요청 -> 400
+POST http://localhost:8080/api/crawl?maxPages=999
+
+### [4단계] 동시 실행 -> 409
+# 아래 요청(10페이지, 약 10초 걸림)을 실행하자마자 바로 위 "java, 2페이지" 요청을 실행해볼 것
+POST http://localhost:8080/api/crawl?maxPages=10

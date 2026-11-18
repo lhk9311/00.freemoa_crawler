@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lhk.freemoa.project.mapper.SnapshotMapper">
+
+    <!-- PK(RUN_ID, PROJ_IDX): 한 번의 수집에서 같은 공고는 1행만 들어갈 수 있다 -->
+    <insert id="insert">
+        INSERT INTO TB_PROJECT_SNAPSHOT (RUN_ID, PROJ_IDX, APPLY_COUNT, COST_MIN, COST_MAX, CAPTURED_AT)
+        VALUES (#{runId}, #{p.projIdx}, #{p.applyCount}, #{p.costMin}, #{p.costMax}, SYSDATE)
+    </insert>
+
+</mapper>

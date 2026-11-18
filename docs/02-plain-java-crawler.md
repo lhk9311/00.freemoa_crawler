@@ -8,12 +8,16 @@ Spring을 쓰면 `@Service`, `@Autowired` 몇 줄로 객체가 알아서 연결�
 ## 구조
 ```mermaid
 flowchart LR
-    Main[PlainCrawlerMain<br/>조립 + 출력] --> Collector[ProjectCollector<br/>페이지 순회, 딜레이]
-    Collector --> Client[FreemoaApiClient<br/>HTTP + JSON 파싱]
-    Collector --> Converter[ProjectConverter<br/>String -> 타입 변환]
-    Converter --> Parser[SkillParser<br/>기술스택 정리]
-    Client -->|FreemoaListResponse<br/>외부 형식| Collector
-    Converter -->|Project<br/>내부 형식| Collector
+    Main["PlainCrawlerMain (조립, 출력)"]
+    Collector["ProjectCollector (페이지 순회, 딜레이)"]
+    Client["FreemoaApiClient (HTTP, JSON 파싱)"]
+    Converter["ProjectConverter (타입 변환)"]
+    Parser["SkillParser (기술스택 정리)"]
+
+    Main --> Collector
+    Collector -- "FreemoaListResponse 요청" --> Client
+    Collector -- "Item 변환 요청" --> Converter
+    Converter --> Parser
 ```
 각 클래스는 한 가지 일만 한다. HTTP가 바뀌면 Client만, 변환 규칙이 바뀌면 Converter만 고친다.
 
