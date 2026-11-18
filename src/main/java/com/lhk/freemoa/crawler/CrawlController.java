@@ -1,6 +1,7 @@
 package com.lhk.freemoa.crawler;
 
 import com.lhk.freemoa.crawler.api.FreemoaApiException;
+import com.lhk.freemoa.crawler.run.CrawlAlreadyRunningException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -37,6 +38,12 @@ public class CrawlController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    }
+
+    /** 이미 수집 중 -> 409 Conflict (요청 자체는 정상이지만 현재 서버 상태와 충돌) */
+    @ExceptionHandler(CrawlAlreadyRunningException.class)
+    public ResponseEntity<Map<String, String>> handleConflict(CrawlAlreadyRunningException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
     }
 
     /** 프리모아(외부 서버) 쪽 문제 -> 502 Bad Gateway. 우리 서버 잘못(500)과 구분한다 */
