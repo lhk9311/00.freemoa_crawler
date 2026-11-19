@@ -1,0 +1,45 @@
+<!--
+    넥사크로 Studio에서 Form에 Dataset을 추가한 뒤,
+    Dataset 더블클릭 > Dataset Editor > Source 탭에 아래 <ColumnInfo> 부분을 각각 붙여넣는다.
+    (Dataset id는 Properties 창에서 지정)
+
+    서버 응답 Dataset의 컬럼 id와 정확히 같아야 transaction 결과가 들어간다.
+-->
+
+<!-- ========== Dataset id: ds_list (공고 목록) ========== -->
+<ColumnInfo>
+  <Column id="projIdx" type="INT" size="10"/>
+  <Column id="title" type="STRING" size="500"/>
+  <Column id="region" type="STRING" size="50"/>
+  <Column id="costMin" type="INT" size="10"/>
+  <Column id="costMax" type="INT" size="10"/>
+  <Column id="applyCount" type="INT" size="6"/>
+  <Column id="deadline" type="DATE" size="8"/>
+  <Column id="skills" type="STRING" size="1000"/>
+</ColumnInfo>
+
+<!-- ========== Dataset id: ds_page (페이지 정보) ========== -->
+<ColumnInfo>
+  <Column id="totalCount" type="INT" size="10"/>
+  <Column id="page" type="INT" size="10"/>
+  <Column id="pageSize" type="INT" size="10"/>
+</ColumnInfo>
+
+<!-- ========== Dataset id: ds_skill (기술스택 콤보) ========== -->
+<ColumnInfo>
+  <Column id="skillKey" type="STRING" size="100"/>
+  <Column id="skillName" type="STRING" size="100"/>
+  <Column id="label" type="STRING" size="120"/>
+  <Column id="cnt" type="INT" size="10"/>
+</ColumnInfo>
+
+<!-- ========== Dataset id: ds_result (수집 결과) ========== -->
+<ColumnInfo>
+  <Column id="runId" type="INT" size="10"/>
+  <Column id="status" type="STRING" size="10"/>
+  <Column id="fetched" type="INT" size="7"/>
+  <Column id="inserted" type="INT" size="7"/>
+  <Column id="updated" type="INT" size="7"/>
+  <Column id="failed" type="INT" size="7"/>
+  <Column id="elapsedMs" type="INT" size="10"/>
+</ColumnInfo>

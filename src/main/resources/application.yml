@@ -15,12 +15,16 @@ mybatis:
     # DB 컬럼 PROJ_IDX -> 자바 필드 projIdx 자동 매핑
     map-underscore-to-camel-case: true
     # Oracle에 null을 바인딩할 때 '부적합한 열 유형: 1111' 에러 방지
-    jdbc-type-for-null: NULL
+    jdbc-type-for-null: 'NULL'
 
 crawler:
   base-url: https://www.freemoa.net
   delay: 1s            # 페이지 사이 대기 (사이트 부담 줄이기)
   max-pages-limit: 30  # 한 번에 수집할 수 있는 최대 페이지 (1페이지 = 10건)
+
+nexacro:
+  # 넥사크로 화면이 뜨는 주소. 브라우저 주소창에 보이는 값과 정확히 같아야 한다 (localhost와 127.0.0.1은 다른 출처)
+  allowed-origins: http://localhost:4098,http://127.0.0.1:4098
 
 logging:
   level:

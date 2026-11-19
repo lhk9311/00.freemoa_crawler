@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 public class FreemoaApiClient {
 
     private static final String LIST_PATH = "/m4a/s41a";
+    /** 목록 API를 실제로 호출하는 프리모아 화면 주소. Referer 헤더에 쓴다 */
+    private static final String LIST_PAGE_PATH = "/m4/s41";
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
     // 어떤 프로그램이 요청하는지 사이트 운영자가 알 수 있도록 정직하게 밝힌다
     private static final String USER_AGENT = "freemoa-crawler-study/0.1 (personal learning project)";
@@ -51,6 +53,10 @@ public class FreemoaApiClient {
                 .timeout(REQUEST_TIMEOUT)
                 .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
                 .header("User-Agent", USER_AGENT)
+                // 이 API는 프리모아 목록 화면의 Ajax 요청에만 응답한다. 두 헤더가 없으면 HTTP 404.
+                // 브라우저가 화면에서 보내는 헤더를 그대로 재현한 것 (curl로 하나씩 빼보며 확인함)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Referer", baseUrl + LIST_PAGE_PATH)
                 .POST(HttpRequest.BodyPublishers.ofString(buildForm(keyword, page)))
                 .build();
 
