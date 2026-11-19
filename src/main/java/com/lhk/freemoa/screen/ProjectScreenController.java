@@ -1,8 +1,11 @@
 package com.lhk.freemoa.screen;
 
+import com.lhk.freemoa.crawler.CrawlJobLauncher;
 import com.lhk.freemoa.crawler.CrawlResult;
 import com.lhk.freemoa.crawler.CrawlService;
 import com.lhk.freemoa.crawler.convert.SkillParser;
+import com.lhk.freemoa.crawler.run.CrawlRunService;
+import com.lhk.freemoa.crawler.run.CrawlRunView;
 import com.lhk.freemoa.nexacro.NxDataset;
 import com.lhk.freemoa.nexacro.NxRequest;
 import com.lhk.freemoa.nexacro.NxResponses;
@@ -41,10 +44,17 @@ public class ProjectScreenController {
 
     private final ProjectQueryService queryService;
     private final CrawlService crawlService;
+    private final CrawlJobLauncher crawlJobLauncher;
+    private final CrawlRunService crawlRunService;
 
-    public ProjectScreenController(ProjectQueryService queryService, CrawlService crawlService) {
+    public ProjectScreenController(ProjectQueryService queryService,
+                                   CrawlService crawlService,
+                                   CrawlJobLauncher crawlJobLauncher,
+                                   CrawlRunService crawlRunService) {
         this.queryService = queryService;
         this.crawlService = crawlService;
+        this.crawlJobLauncher = crawlJobLauncher;
+        this.crawlRunService = crawlRunService;
     }
 
     /** 공고 목록 조회 */
@@ -109,13 +119,44 @@ public class ProjectScreenController {
         return NxResponses.ok(ds);
     }
 
-    /** 화면에서 수집 실행 */
+    /** 화면에서 수집 실행 (페이지 수 지정) */
     @PostMapping("/crawl")
     public ResponseEntity<String> crawl(@RequestBody(required = false) String body) {
         NxRequest req = NxXmlReader.read(body);
         CrawlResult r = crawlService.crawl(req.getString("keyword", ""), req.getInt("maxPages", 1));
+        return NxResponses.ok(resultDataset(r));
+    }
 
-        NxDataset ds = new NxDataset("ds_result")
+    /** [6단계] 새 공고만 수집 (증분). 보통 1~2페이지라 결과를 기다려서 돌려준다 */
+    @PostMapping("/crawl/incremental")
+    public ResponseEntity<String> crawlIncremental() {
+        return NxResponses.ok(resultDataset(crawlService.crawlIncremental()));
+    }
+
+    /**
+     * [6단계] 전체 수집 접수. 수 분 걸리므로 기다리지 않고 RUNNING 상태의 이력 1행을 바로 돌려준다.
+     * 화면은 받은 runId로 /nx/crawl/run 을 몇 초마다 다시 물어본다 (폴링).
+     */
+    @PostMapping("/crawl/full")
+    public ResponseEntity<String> crawlFull(@RequestBody(required = false) String body) {
+        NxRequest req = NxXmlReader.read(body);
+        long runId = crawlJobLauncher.submitFull(req.getString("keyword", ""));
+        return NxResponses.ok(runDataset(crawlRunService.find(runId)));
+    }
+
+    /** [6단계] 수집 진행 상황 1건 (폴링용) */
+    @PostMapping("/crawl/run")
+    public ResponseEntity<String> crawlRun(@RequestBody(required = false) String body) {
+        NxRequest req = NxXmlReader.read(body);
+        CrawlRunView run = crawlRunService.find(req.getInt("runId", 0));
+        if (run == null) {
+            throw new IllegalArgumentException("수집 이력이 없습니다: runId=" + req.getString("runId"));
+        }
+        return NxResponses.ok(runDataset(run));
+    }
+
+    private static NxDataset resultDataset(CrawlResult r) {
+        return new NxDataset("ds_result")
                 .column("runId", NxType.INT, 10)
                 .column("status", NxType.STRING, 10)
                 .column("fetched", NxType.INT, 7)
@@ -124,6 +165,20 @@ public class ProjectScreenController {
                 .column("failed", NxType.INT, 7)
                 .column("elapsedMs", NxType.INT, 10)
                 .addRow(r.runId(), r.status().name(), r.fetched(), r.inserted(), r.updated(), r.failed(), r.elapsedMs());
-        return NxResponses.ok(ds);
+    }
+
+    private static NxDataset runDataset(CrawlRunView v) {
+        return new NxDataset("ds_run")
+                .column("runId", NxType.INT, 10)
+                .column("runType", NxType.STRING, 20)
+                .column("status", NxType.STRING, 10)
+                .column("pageCount", NxType.INT, 5)
+                .column("fetchedCnt", NxType.INT, 7)
+                .column("insertedCnt", NxType.INT, 7)
+                .column("updatedCnt", NxType.INT, 7)
+                .column("failedCnt", NxType.INT, 7)
+                .column("errorMsg", NxType.STRING, 1000)
+                .addRow(v.runId(), v.runType(), v.status(), v.pageCount(), v.fetchedCnt(),
+                        v.insertedCnt(), v.updatedCnt(), v.failedCnt(), v.errorMsg());
     }
 }

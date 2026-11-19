@@ -102,6 +102,35 @@ crawler:
 ### Spring Batch를 안 쓴 이유
 이 규모(하루 수십 번, 몇 페이지)에서는 `@Scheduled`로 충분하다. Spring Batch는 재시작 지점, 청크 단위 커밋, 실행 이력 테이블 같은 기능이 필요할 때 쓴다. 그런데 이력(TB_CRAWL_RUN)과 건별 커밋은 이미 직접 만들어 두었다.
 
+## 4. 화면 (넥사크로)
+
+하단 수집 영역에 버튼 2개와 진행 상황 표시를 붙였다.
+
+| 버튼 | 서버 API | 동작 |
+|---|---|---|
+| 수집 실행 | `/nx/crawl` | 기존. 페이지 수만큼, 끝나면 결과 표시 |
+| 새 공고만 | `/nx/crawl/incremental` | 증분 수집. 보통 금방 끝나서 결과를 기다림 |
+| 전체 수집 | `/nx/crawl/full` → `/nx/crawl/run` 반복 | 접수 후 3초마다 진행 상황을 물어봄 (폴링) |
+
+### 폴링 흐름
+```
+[전체 수집] 클릭
+  └─ /nx/crawl/full  → ds_run (runId, RUNNING) 즉시 응답
+       └─ setTimer(1, 3000)
+            └─ 3초마다 Form_ontimer → /nx/crawl/run (runId) → sta_runStatus 갱신
+                 └─ status가 RUNNING이 아니면 killTimer, 버튼 다시 켜기, 목록 새로고침
+```
+- 앞의 폴링 응답이 오기 전에 다음 타이머가 울리면 건너뛴다 (`this.polling` 표시). 서버가 느릴 때 요청이 쌓이지 않게 하려고.
+- 폴링이 실패하면 타이머부터 멈춘다. 안 그러면 3초마다 alert가 뜬다.
+
+### 넥사크로 GET/POST 함정
+인자가 없는 transaction은 GET으로 나간다 (06 트러블슈팅 11번). 조회(`/nx/skills`)는 GET이어도 괜찮지만, 데이터를 바꾸는 수집 요청은 POST여야 한다.
+그래서 수집 버튼은 서버가 쓰지 않는 인자(`type=FULL`, `type=INCREMENTAL`)라도 항상 하나 이상 보낸다.
+
+### Studio에 반영
+Studio 프로젝트의 폼(`C:\nexacro\projects\freemoa_nx\Base\frmProjectList.xfdl`)은 Import 때 복사된 것이라 저장소 파일이 바뀌어도 자동으로 안 바뀐다.
+Studio에서 폼 탭을 닫고 → 저장소의 `nexacro/frmProjectList.xfdl`을 위 경로에 덮어쓰기 → 폼을 다시 연다.
+
 ## DB 변경
 `db/03_alter_crawl_run_type.sql`: `TB_CRAWL_RUN.RUN_TYPE` 컬럼 + CHECK 제약조건.
 NOT NULL 컬럼을 행이 있는 테이블에 추가하려면 DEFAULT가 필요하다 (기존 행은 MANUAL로 채워짐).
