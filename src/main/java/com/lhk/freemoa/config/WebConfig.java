@@ -35,7 +35,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/nx/**")
                 .allowedOrigins(allowedOrigins)
-                .allowedMethods("POST", "OPTIONS")
+                .allowedMethods("GET", "POST", "OPTIONS") // GET: 인자 없는 넥사크로 transaction (/nx/skills)
                 .allowedHeaders("*")
                 .maxAge(3600); // preflight 결과를 브라우저가 1시간 캐시 -> 매번 OPTIONS를 보내지 않음
     }

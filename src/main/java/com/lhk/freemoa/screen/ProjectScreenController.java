@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -89,8 +90,11 @@ public class ProjectScreenController {
         return NxResponses.ok(list, pageInfo);
     }
 
-    /** 기술스택 콤보박스 목록 (공고 수 많은 순) */
-    @PostMapping("/skills")
+    /**
+     * 기술스택 콤보박스 목록 (공고 수 많은 순)
+     * 넥사크로는 보낼 Dataset도 인자도 없는 transaction을 GET으로 보낸다. 그래서 GET도 받는다.
+     */
+    @RequestMapping(value = "/skills", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<String> skills() {
         NxDataset ds = new NxDataset("ds_skill")
                 .column("skillKey", NxType.STRING, 100)

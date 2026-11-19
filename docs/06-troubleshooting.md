@@ -16,6 +16,7 @@
 | 8 | `ORA-17004` / 부적합한 열 유형 `1111` | YAML에서 따옴표 없는 `NULL`이 null로 읽힘 | 설정 |
 | 9 | `git push` rejected (non-fast-forward) | 로컬 main이 원격 main보다 뒤처짐 | Git |
 | 10 | 넥사크로 실행 시 빈 화면 | WorkFrame `formurl`이 빈 폼을 가리킴 | 화면 |
+| 11 | 브라우저 실행 시 `[skills] FAILED` (CORS error) | 넥사크로가 인자 없는 요청을 GET으로 보냄, 서버는 POST만 허용 | CORS |
 
 ---
 
@@ -126,3 +127,22 @@ git push origin main
 - **원인**: 실행(Launch)은 앱 전체를 띄우고, 앱은 mainframe > WorkFrame의 `formurl` 폼을 보여준다. 프로젝트 마법사의 기본값이 비어 있는 `FrameBase::Form_Work.xfdl`이다.
 - **해결**: WorkFrame의 `formurl`을 `Base::frmProjectList.xfdl`로 바꾸고 저장했다. 자세한 위치는 [05-nexacro.md](05-nexacro.md)의 4번에 있다.
 - **배운 점**: Launch(Ctrl+F5)는 앱 전체, QuickView(Ctrl+F6)는 지금 연 폼 하나다.
+
+## 11. 브라우저 실행 시 [skills] FAILED (CORS error)
+
+- **증상**: Chrome(`http://127.0.0.1:4098`)으로 띄우면 기술 콤보 로딩만 실패. 같은 화면의 조회(`/nx/projects/search`)는 정상. QuickView(NRE)에서는 둘 다 정상.
+- **Console 메시지**
+  ```
+  Access to fetch at 'http://localhost:8080/nx/skills' from origin 'http://127.0.0.1:4098'
+  has been blocked by CORS policy: Response to preflight request doesn't pass access control check:
+  No 'Access-Control-Allow-Origin' header is present on the requested resource.
+  GET http://localhost:8080/nx/skills net::ERR_FAILED
+  ```
+- **원인**: 마지막 줄의 `GET`. 넥사크로는 보낼 Dataset도 인자도 없는 transaction(`skills`)을 GET으로 보낸다. 인자가 있는 조회는 POST다.
+  - 서버는 `@PostMapping("/skills")`, CORS는 `allowedMethods("POST", "OPTIONS")`라서, 사전 요청(OPTIONS)의 `Access-Control-Request-Method: GET`을 거절했다.
+  - 거절된 사전 요청에는 `Access-Control-Allow-Origin`이 없으니 브라우저는 "CORS 에러"로만 보여준다.
+  - NRE는 브라우저가 아니라 CORS 검사를 안 하고, 서버에는 405가 났겠지만 콘솔에 묻혔다.
+- **해결**
+  - `ProjectScreenController`: `@RequestMapping(value = "/skills", method = {RequestMethod.GET, RequestMethod.POST})`
+  - `WebConfig`: `.allowedMethods("GET", "POST", "OPTIONS")`
+- **배운 점**: CORS 에러는 다른 원인(메서드 불일치, 404, 서버 에러)을 가리는 껍데기인 경우가 많다. Console 문구 전체와 실제 메서드를 먼저 본다. 같은 설정인데 한 요청만 실패하면 두 요청의 차이(메서드, 헤더, 경로)를 비교한다.
