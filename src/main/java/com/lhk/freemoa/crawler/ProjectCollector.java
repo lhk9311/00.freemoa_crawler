@@ -9,6 +9,7 @@ import com.lhk.freemoa.crawler.domain.Project;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,11 @@ import java.util.List;
 public class ProjectCollector {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectCollector.class);
+
+    /** 한 페이지 요청을 최대 몇 번까지 시도할지 (첫 시도 포함) */
+    private static final int MAX_ATTEMPTS = 3;
+    /** 재시도 대기 시간의 기본 단위. 1번째 실패 후 2초, 2번째 실패 후 4초 */
+    private static final Duration RETRY_BASE_WAIT = Duration.ofSeconds(2);
 
     /** 프리모아 목록 API는 한 페이지에 10건씩 준다 */
     private static final int PAGE_SIZE = 10;
@@ -77,7 +83,7 @@ public class ProjectCollector {
                 sleep(); // 사이트에 부담 주지 않도록 페이지 사이에 쉰다
             }
 
-            FreemoaListResponse.ProjectSection section = apiClient.fetchList(keyword, page).data().project();
+            FreemoaListResponse.ProjectSection section = fetchWithRetry(keyword, page).data().project();
             List<FreemoaListResponse.Item> items = section.list();
             if (items == null || items.isEmpty()) {
                 return page - 1; // 더 이상 데이터 없음
@@ -119,9 +125,40 @@ public class ProjectCollector {
         return pagination != null && (long) page * PAGE_SIZE >= pagination.totalRows();
     }
 
+    /**
+     * 네트워크 오류(타임아웃, 연결 끊김)는 잠깐 뒤에 다시 하면 되는 경우가 많다. 최대 MAX_ATTEMPTS번 시도한다.
+     * 실제로 전체 수집 438페이지에서 HttpTimeoutException 1번 때문에 수집이 멈췄다.
+     *
+     * 재시도하는 것: IOException이 원인인 경우 (HttpTimeoutException도 IOException의 하위 타입)
+     * 재시도 안 하는 것: HTTP 404 같은 응답 코드 이상, JSON 파싱 실패, 인터럽트
+     *   -> 다시 해도 결과가 같거나(404, 파싱), 멈추라는 신호(인터럽트)라서
+     *
+     * 재시도 간격은 2초, 4초로 늘린다 (백오프). 상대 서버가 바빠서 느린 거라면 바로 다시 보내는 건 부담만 더한다.
+     */
+    private FreemoaListResponse fetchWithRetry(String keyword, int page) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return apiClient.fetchList(keyword, page);
+            } catch (FreemoaApiException e) {
+                boolean networkError = e.getCause() instanceof IOException;
+                if (!networkError || attempt >= MAX_ATTEMPTS) {
+                    throw e;
+                }
+                Duration wait = RETRY_BASE_WAIT.multipliedBy(attempt);
+                log.warn("page={} 요청 실패 ({}번째), {}초 뒤 재시도: {}",
+                        page, attempt, wait.toSeconds(), e.getCause().toString());
+                sleep(wait);
+            }
+        }
+    }
+
     private void sleep() {
+        sleep(delayBetweenPages);
+    }
+
+    private void sleep(Duration duration) {
         try {
-            Thread.sleep(delayBetweenPages.toMillis());
+            Thread.sleep(duration.toMillis());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new FreemoaApiException("수집 대기 중 인터럽트", e);
