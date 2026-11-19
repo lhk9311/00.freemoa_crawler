@@ -131,6 +131,54 @@ crawler:
 Studio 프로젝트의 폼(`C:\nexacro\projects\freemoa_nx\Base\frmProjectList.xfdl`)은 Import 때 복사된 것이라 저장소 파일이 바뀌어도 자동으로 안 바뀐다.
 Studio에서 폼 탭을 닫고 → 저장소의 `nexacro/frmProjectList.xfdl`을 위 경로에 덮어쓰기 → 폼을 다시 연다.
 
+## 5. 로직 비교: 전체 수집 vs 신규 수집
+
+### 공통 루프 (`CrawlService.execute()`)
+받아오는 건 10개씩, 저장은 1건씩이다.
+```
+페이지 = 1
+반복:
+  ① 프리모아에 페이지 요청 → 공고 10개 (JSON)
+  ② 10개를 하나씩 변환 (실패한 건은 경고 로그 후 건너뜀)
+  ③ 저장: 1건씩, 건마다 트랜잭션 따로
+       공고 1건 = MERGE + 기술 연결(DELETE 후 INSERT) + 스냅샷 INSERT → 커밋
+  ④ TB_CRAWL_RUN 진행 건수 갱신
+  ⑤ 멈출지 판단          ← 수집 종류마다 여기만 다름
+  ⑥ 1초 쉬고 다음 페이지
+끝: TB_CRAWL_RUN에 SUCCESS / PARTIAL / FAIL
+```
+- ①이 10개 단위인 건 프리모아가 한 페이지에 10건씩 주기 때문이다.
+- ③은 한 행씩이라 10개 중 1개가 실패해도 나머지 9개는 커밋된다.
+
+### 차이점
+| | 전체 수집 (FULL) | 신규 수집 (INCREMENTAL) |
+|---|---|---|
+| 시작 | 사람이 버튼 / API | 스케줄러 (평일 9~18시 정각) |
+| 실행 스레드 | `crawl-1` (백그라운드) | `scheduling-1` |
+| 응답 | runId 즉시, 진행은 폴링 | 끝날 때까지 기다림 (보통 수 초) |
+| ⑤ 멈추는 조건 | 마지막 페이지 도달 | 새 공고(INSERT) 0건 페이지가 2번 연속 |
+| 페이지 상한 | 1000 (`full-max-pages`) | 10 (`incremental.max-pages`) |
+| 보통 페이지 수 | 약 437 | 1~2 |
+
+신규 수집의 멈춤 예:
+```
+1페이지: 신규 3, 갱신 7  → 계속 (연속 0)
+2페이지: 신규 0, 갱신 10 → 계속 (연속 1)
+3페이지: 신규 0, 갱신 10 → 멈춤 (연속 2)
+```
+목록이 최신순이라 새 공고가 끊기면 그 뒤는 이미 아는 공고로 본다.
+
+### 이전 배치 과제, Spring Batch와 비교
+| | 이전 배치 과제 (Tasklet) | 이번 수집 | Spring Batch Chunk |
+|---|---|---|---|
+| 읽기 | DB에서 대상 조회 | 외부 API에서 10개씩 | Reader가 N개씩 |
+| 쓰기 | 한 행씩 UPDATE | 한 건씩 MERGE (+ 기술, 스냅샷) | Writer가 N개 한 번에 |
+| 커밋 단위 | Tasklet 단위 또는 건별 | 건별 | Chunk(N개) 단위 |
+| 이력 | Spring Batch 메타 테이블 | `TB_CRAWL_RUN` 직접 설계 | `BATCH_JOB_EXECUTION` 등 |
+
+이번 구조는 읽기는 Chunk처럼 10개씩, 커밋은 그보다 잘게 1건씩이다.
+1건 실패가 나머지에 영향을 주지 않는 대신 커밋 횟수가 많아 조금 느리다. 이 규모(수천 건)에서는 안전한 쪽을 택했다.
+
 ## DB 변경
 `db/03_alter_crawl_run_type.sql`: `TB_CRAWL_RUN.RUN_TYPE` 컬럼 + CHECK 제약조건.
 NOT NULL 컬럼을 행이 있는 테이블에 추가하려면 DEFAULT가 필요하다 (기존 행은 MANUAL로 채워짐).
