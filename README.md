@@ -1,4 +1,4 @@
-# 📋 freemoa-crawler
+# freemoa-crawler
 
 > 프리랜서 플랫폼 **프리모아**의 프로젝트 공고를 수집해 Oracle에 적재하고,
 > **넥사크로 N** 화면에서 조회·통계·엑셀 다운로드까지 제공하는 SI 스타일 백엔드 프로젝트
@@ -8,7 +8,7 @@ Java 기본기(DI, 예외, 컬렉션/스트림), Oracle SQL(정규화, MERGE, �
 
 <br>
 
-## 🛠 기술 스택
+## 기술 스택
 
 | 구분 | 기술 |
 |---|---|
@@ -21,7 +21,7 @@ Java 기본기(DI, 예외, 컬렉션/스트림), Oracle SQL(정규화, MERGE, �
 
 <br>
 
-## 🗺 전체 흐름
+## 전체 흐름
 
 ```mermaid
 flowchart LR
@@ -77,7 +77,7 @@ flowchart LR
 
 <br>
 
-## 📂 소스 트리
+## 소스 트리
 
 ```
 freemoa-crawler
@@ -135,7 +135,7 @@ freemoa-crawler
 
 <br>
 
-## 🗂 ERD
+## ERD
 
 ```mermaid
 erDiagram
@@ -178,7 +178,7 @@ erDiagram
 
 <br>
 
-## 🚀 진행 현황
+## 진행 현황
 
 | # | 단계 | 핵심 학습 포인트 | 상태 |
 |---|---|---|---|
@@ -194,7 +194,7 @@ erDiagram
 
 <br>
 
-## ▶️ 실행 방법
+## 실행 방법
 
 <details>
 <summary><b>1. DB 준비</b></summary>
@@ -241,7 +241,7 @@ DB_PASSWORD=비밀번호
 
 <br>
 
-## 🔒 수집 원칙
+## 수집 원칙
 - `robots.txt`에서 허용된 목록 경로만 사용하고, 페이지 사이에 1초 딜레이를 둔다.
 - User-Agent에 학습용 프로그램임을 밝힌다.
 - 의뢰인 이메일 등 **개인정보는 수집하지 않는다.** (응답에 포함돼 있어도 DTO에 필드를 두지 않음)
