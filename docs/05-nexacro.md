@@ -11,6 +11,7 @@
 | CORS | 서버 | `config/WebConfig`, `application.yml`의 `nexacro.allowed-origins` |
 | Dataset 정의 | 화면 | `nexacro/datasets.xml` |
 | 화면 스크립트 | 화면 | `nexacro/frmProjectList.js` |
+| 화면 전체 (레이아웃 + Dataset + 스크립트) | 화면 | `nexacro/frmProjectList.xfdl` (Studio로 Import) |
 
 ### 왜 X-API 라이브러리를 안 썼나
 실무에서는 투비소프트의 X-API(또는 UI Adapter) jar로 `PlatformData`, `DataSet` 객체를 다룬다.
@@ -38,63 +39,84 @@ curl -X POST http://localhost:8080/nx/projects/search ^
 ```
 응답에 `<Dataset id="ds_list">`와 `<Row>`들이 보이면 서버 쪽은 끝.
 
-## Studio 작업 순서
+## Studio 작업 순서 (실제로 한 순서)
 
-### 1. 서버 주소 등록 (TypeDefinition)
-Project Explorer > `TypeDefinition` 더블클릭 > **Services** 탭 > 추가
+화면은 `nexacro/frmProjectList.xfdl` 한 파일에 레이아웃, Dataset, 스크립트가 모두 들어 있다.
+컴포넌트를 하나씩 배치하지 않고 이 파일을 Import 해서 쓴다.
+
+### 1. 프로젝트 생성
+Start Page > **New** > Application
+| 단계 | 값 |
+|---|---|
+| Project Name | `freemoa_nx` |
+| Location | `C:\nexacro\projects\` (기본값) |
+| Screen | Desktop, 1280 x 720 (기본값) |
+| Frame | Full (기본값) → **Finish** |
+
+### 2. 서버 주소 등록 (TypeDefinition > Services)
+Project Explorer > `TypeDefinition` > **Services** 더블클릭 > 아래 User Service 표의 `+` > Type 목록에서 **JSP** 선택
 | PrefixID | Type | URL |
 |---|---|---|
 | `svc` | JSP | `http://localhost:8080/` |
 
+입력 후 **OK**.
 스크립트의 `"svc::nx/skills"`가 `http://localhost:8080/nx/skills`로 바뀐다.
 서버 주소가 바뀌어도 여기 한 곳만 고치면 된다.
 
-### 2. Form 만들기
-`frmProjectList` 이름으로 Form 생성
+주의: `TypeDefinition` 아래 **Objects**를 열면 컴포넌트 목록 창이 뜬다. 서비스는 **Services**다.
 
-### 3. Dataset 4개 추가
-Invisible Objects 영역에 Dataset 4개 추가 → id를 `ds_list`, `ds_page`, `ds_skill`, `ds_result`로 지정 →
-각각 Dataset Editor > **Source** 탭에 `nexacro/datasets.xml`의 해당 `<ColumnInfo>` 붙여넣기
+### 3. 폼 Import
+Project Explorer > `Base` 우클릭 > **Import** > 파일 이름에
+`C:\Users\lhk93\IdeaProjects\freemoa-crawler\nexacro\frmProjectList.xfdl` 입력 > 열기
 
-### 4. 컴포넌트 배치
+Output 창에 `File Import : Success 1, Fail 0`, `Successfully generated file : ...frmProjectList.xfdl.js`가 나오면 성공.
+`frmProjectList` 더블클릭 → Design 탭에 조회 조건, 그리드가 보이고 아래 Invisible Object에 `ds_list`, `ds_page`, `ds_skill`, `ds_result`가 있으면 정상.
 
-조회 영역
-| 컴포넌트 | id | 설정 |
+Import는 **복사**다. 이후 Studio에서 고치는 파일은
+`C:\nexacro\projects\freemoa_nx\Base\frmProjectList.xfdl`이고, 저장소의 `nexacro/frmProjectList.xfdl`과 자동 동기화되지 않는다.
+화면을 고쳤으면 저장소 쪽으로 다시 복사해서 커밋한다.
+
+Source 탭에 XML을 다시 붙여넣을 필요는 없다.
+
+### 4. 처음 띄울 폼 지정 (빈 화면 문제)
+Project Explorer > `Application Information` > `Applications` > `Application_Desktop` > `mainframe` > **WorkFrame** 선택 >
+Properties 필터에 `formurl` 입력 > 값을 `Base::frmProjectList.xfdl`로 변경 > **Ctrl+Shift+S** (모두 저장)
+
+| 증상 | 원인 |
+|---|---|
+| 폼 소스는 멀쩡한데 실행하면 빈 화면 | WorkFrame의 `formurl` 기본값이 비어 있는 `FrameBase::Form_Work.xfdl` |
+
+실행 버튼은 앱 전체를 띄우고, 앱은 WorkFrame이 가리키는 폼을 보여준다.
+마법사가 만든 기본값이 빈 폼이라, 이걸 안 바꾸면 내 폼이 아니라 빈 폼이 뜬다.
+
+### 5. 실행
+Spring Boot 앱을 먼저 실행한다 (콘솔에 `Started FreemoaCrawlerApplication`).
+
+| 방식 | 단축키 | 띄우는 것 |
 |---|---|---|
-| Edit | `edt_keyword` | 제목 검색어 |
-| Combo | `cbo_skill` | innerdataset=`ds_skill`, codecolumn=`skillKey`, datacolumn=`label` |
-| Edit | `edt_region` | 예: 서울 |
-| Edit | `edt_minCost` | 최소 예산(만원) |
-| CheckBox | `chk_openOnly` | text=모집중만 |
-| Button | `btn_search` | text=조회 |
+| Launch (실행) | Ctrl+F5 | 앱 전체. WorkFrame `formurl`의 폼 |
+| QuickView | Ctrl+F6 | 지금 편집 중인 폼 하나만 |
 
-목록 영역
-| 컴포넌트 | id | 설정 |
+Run Configuration 창이 뜨면 그대로 **Run**.
+기본값 Local Web Server(`http://127.0.0.1:4099/`) + Nexacro Runtime Environment로 실행되며, 브라우저가 아닌 별도 창으로 뜬다.
+Output의 `favicon.ico 404`는 무시해도 된다.
+
+### 6. 확인
+| 확인 | 정상 결과 | 의미 |
 |---|---|---|
-| Grid | `grd_list` | binddataset=`ds_list` → Grid 우클릭 > **Create Format** 으로 컬럼 자동 생성 |
-| Static | `sta_total` | 총 건수 표시 |
-| Button | `btn_prev`, `btn_next` | 이전 / 다음 |
-| Static | `sta_page` | 1 / 5 |
+| 기술 콤보 펼치기 | `JAVA (5)` 같은 항목 | `/nx/skills` 통신 성공 (Form_onload) |
+| 조회 버튼 | `총 N건`, 그리드 채워짐 | `/nx/projects/search` 성공 |
+| 에러 alert | 없음 | 있으면 문구 + Output 빨간 로그 확인 |
 
-수집 영역
-| 컴포넌트 | id | 설정 |
-|---|---|---|
-| Edit | `edt_crawlKeyword` | 수집 검색어 |
-| Edit | `edt_crawlPages` | 페이지 수 (1~30) |
-| Button | `btn_crawl` | text=수집 |
+### 참고: 폼 구성
+| 영역 | 컴포넌트 id |
+|---|---|
+| 조회 조건 | `edt_keyword`, `cbo_skill`(innerdataset=`ds_skill`, codecolumn=`skillKey`, datacolumn=`label`), `edt_region`, `edt_minCost`, `chk_openOnly`, `btn_search` |
+| 건수 / 페이징 | `sta_total`, `btn_prev`, `sta_page`, `btn_next` |
+| 목록 | `grd_list` (binddataset=`ds_list`) |
+| 수집 | `edt_crawlKeyword`, `edt_crawlPages`, `btn_crawl` |
 
-### 5. 스크립트 붙여넣기 + 이벤트 연결
-`nexacro/frmProjectList.js` 내용을 Form의 **Script** 탭에 붙여넣고,
-Properties 창 > Events 탭에서 연결:
-| 대상 | 이벤트 | 함수 |
-|---|---|---|
-| Form | onload | `Form_onload` |
-| btn_search | onclick | `btn_search_onclick` |
-| btn_prev / btn_next | onclick | `btn_prev_onclick` / `btn_next_onclick` |
-| btn_crawl | onclick | `btn_crawl_onclick` |
-
-### 6. 실행
-Spring Boot 앱을 먼저 실행한 뒤 Studio에서 실행(QuickView 또는 브라우저 실행).
+이벤트는 xfdl 안에 이미 연결돼 있다 (Form `onload=Form_onload`, 각 버튼 `onclick`).
 
 ## CORS 체크리스트 (브라우저로 실행할 때)
 화면 주소와 API 주소의 포트가 다르면 CORS 대상이다.
