@@ -30,15 +30,44 @@ public class ProjectCollector {
     }
 
     /**
-     * @param maxPages 최대 몇 페이지까지 가져올지. 전체가 400페이지가 넘으므로 반드시 상한을 둔다.
+     * 한 페이지를 받을 때마다 호출되는 콜백.
+     * 메서드가 하나뿐인 인터페이스(함수형 인터페이스)라서 람다로 넘길 수 있다.
+     *
+     * @return true면 다음 페이지 계속, false면 여기서 멈춤 (6단계 증분 수집의 멈춤 조건에 쓴다)
+     */
+    @FunctionalInterface
+    public interface PageHandler {
+        boolean onPage(int page, List<Project> projects);
+    }
+
+    /**
+     * 모두 모아서 한 번에 돌려준다. (2단계 PlainCrawlerMain용, 페이지 수가 적을 때)
+     * 내부적으로는 collectEachPage에 "리스트에 담기만 하는 콜백"을 넘기는 것과 같다.
      */
     public List<Project> collect(String keyword, int maxPages) {
+        List<Project> result = new ArrayList<>();
+        collectEachPage(keyword, maxPages, (page, projects) -> {
+            result.addAll(projects);
+            return true;
+        });
+        return result;
+    }
+
+    /**
+     * 페이지를 받을 때마다 handler에게 넘긴다. (6단계: 전체 수집, 증분 수집)
+     * 전부 모은 뒤 저장하면 400페이지 중 마지막에 실패했을 때 앞의 399페이지도 날아간다.
+     * 페이지 단위로 넘기면 받은 만큼은 바로 저장할 수 있다.
+     *
+     * @param maxPages 최대 몇 페이지까지 볼지. 전체가 400페이지가 넘으므로 반드시 상한을 둔다.
+     * @return 실제로 받은 페이지 수
+     */
+    public int collectEachPage(String keyword, int maxPages, PageHandler handler) {
         if (maxPages < 1) {
             throw new IllegalArgumentException("maxPages는 1 이상이어야 함: " + maxPages);
         }
 
-        List<Project> result = new ArrayList<>();
-        for (int page = 1; page <= maxPages; page++) {
+        int page = 1;
+        for (; page <= maxPages; page++) {
             if (page > 1) {
                 sleep(); // 사이트에 부담 주지 않도록 페이지 사이에 쉰다
             }
@@ -46,18 +75,17 @@ public class ProjectCollector {
             FreemoaListResponse.ProjectSection section = apiClient.fetchList(keyword, page).data().project();
             List<FreemoaListResponse.Item> items = section.list();
             if (items == null || items.isEmpty()) {
-                break; // 더 이상 데이터 없음
+                return page - 1; // 더 이상 데이터 없음
             }
 
-            for (FreemoaListResponse.Item item : items) {
-                result.add(converter.convert(item));
-            }
+            List<Project> projects = items.stream().map(converter::convert).toList();
+            boolean keepGoing = handler.onPage(page, projects);
 
-            if (isLastPage(page, items.size(), section.pagination())) {
-                break;
+            if (!keepGoing || isLastPage(page, items.size(), section.pagination())) {
+                return page;
             }
         }
-        return result;
+        return maxPages;
     }
 
     /** 받은 건수가 한 페이지 분량보다 적거나, 지금까지 본 건수가 전체 건수에 도달하면 마지막 페이지 */

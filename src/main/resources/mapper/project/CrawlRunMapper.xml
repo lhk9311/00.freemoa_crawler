@@ -9,8 +9,8 @@
 
     <!-- 이미 RUNNING 행이 있으면 UX_CRAWL_RUN_RUNNING 유니크 인덱스에 걸려 실패한다 (02 스크립트) -->
     <insert id="insertRunning">
-        INSERT INTO TB_CRAWL_RUN (RUN_ID, STATUS, KEYWORD, STARTED_AT)
-        VALUES (#{runId}, 'RUNNING', #{keyword}, SYSDATE)
+        INSERT INTO TB_CRAWL_RUN (RUN_ID, STATUS, KEYWORD, RUN_TYPE, STARTED_AT)
+        VALUES (#{runId}, 'RUNNING', #{keyword}, #{runType}, SYSDATE)
     </insert>
 
     <update id="updateFinish">
@@ -26,5 +26,59 @@
          WHERE RUN_ID = #{runId}
            AND STATUS = 'RUNNING'
     </update>
+
+    <!-- [6단계] 페이지마다 호출. 끝난 수집(STATUS가 RUNNING이 아님)은 건드리지 않는다 -->
+    <update id="updateProgress">
+        UPDATE TB_CRAWL_RUN
+           SET PAGE_COUNT   = #{pageCount}
+             , FETCHED_CNT  = #{fetchedCnt}
+             , INSERTED_CNT = #{insertedCnt}
+             , UPDATED_CNT  = #{updatedCnt}
+             , FAILED_CNT   = #{failedCnt}
+         WHERE RUN_ID = #{runId}
+           AND STATUS = 'RUNNING'
+    </update>
+
+    <!--
+      [6단계] 서버 시작 시 1번 실행.
+      수집 도중 서버가 꺼지면 finish()가 호출되지 못해 RUNNING이 남는다.
+      그러면 UX_CRAWL_RUN_RUNNING 유니크 인덱스 때문에 다음 수집이 영원히 막힌다.
+      주의: 서버가 1대일 때만 맞는 방법이다. 2대 이상이면 다른 서버가 정상 실행 중인 행까지 FAIL로 바꿔버린다.
+    -->
+    <update id="failStaleRunning">
+        UPDATE TB_CRAWL_RUN
+           SET STATUS    = 'FAIL'
+             , ENDED_AT  = SYSDATE
+             , ERROR_MSG = #{errorMsg}
+         WHERE STATUS = 'RUNNING'
+    </update>
+
+    <!--
+      [6단계] record는 setter가 없어서 생성자로 값을 넣어야 한다.
+      constructor/arg는 위에서부터 순서대로 record의 생성자 파라미터에 들어간다 (순서와 타입이 맞아야 함).
+    -->
+    <resultMap id="crawlRunViewMap" type="com.lhk.freemoa.crawler.run.CrawlRunView">
+        <constructor>
+            <arg column="RUN_ID"       javaType="long"/>
+            <arg column="RUN_TYPE"     javaType="string"/>
+            <arg column="STATUS"       javaType="string"/>
+            <arg column="KEYWORD"      javaType="string"/>
+            <arg column="STARTED_AT"   javaType="java.time.LocalDateTime"/>
+            <arg column="ENDED_AT"     javaType="java.time.LocalDateTime"/>
+            <arg column="PAGE_COUNT"   javaType="int"/>
+            <arg column="FETCHED_CNT"  javaType="int"/>
+            <arg column="INSERTED_CNT" javaType="int"/>
+            <arg column="UPDATED_CNT"  javaType="int"/>
+            <arg column="FAILED_CNT"   javaType="int"/>
+            <arg column="ERROR_MSG"    javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectRun" resultMap="crawlRunViewMap">
+        SELECT RUN_ID, RUN_TYPE, STATUS, KEYWORD, STARTED_AT, ENDED_AT,
+               PAGE_COUNT, FETCHED_CNT, INSERTED_CNT, UPDATED_CNT, FAILED_CNT, ERROR_MSG
+          FROM TB_CRAWL_RUN
+         WHERE RUN_ID = #{runId}
+    </select>
 
 </mapper>

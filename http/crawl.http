@@ -13,3 +13,15 @@ POST http://localhost:8080/api/crawl?maxPages=999
 ### [4단계] 동시 실행 -> 409
 # 아래 요청(10페이지, 약 10초 걸림)을 실행하자마자 바로 위 "java, 2페이지" 요청을 실행해볼 것
 POST http://localhost:8080/api/crawl?maxPages=10
+
+### [6단계] 전체 수집 접수 -> 202 + runId (실제 수집은 백그라운드, 약 7~10분)
+POST http://localhost:8080/api/crawl/all
+
+### [6단계] 진행 상황 조회 (위 응답의 runId로 바꿔서 실행, 여러 번 눌러보며 pageCount가 오르는지 확인)
+GET http://localhost:8080/api/crawl/runs/11
+
+### [6단계] 전체 수집 도중 다시 요청 -> 409
+POST http://localhost:8080/api/crawl/all
+
+### [6단계] 증분 수집 지금 1번 실행 (배치 기다리지 않고 테스트)
+POST http://localhost:8080/api/crawl/incremental

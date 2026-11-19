@@ -21,6 +21,12 @@ crawler:
   base-url: https://www.freemoa.net
   delay: 1s            # 페이지 사이 대기 (사이트 부담 줄이기)
   max-pages-limit: 30  # 한 번에 수집할 수 있는 최대 페이지 (1페이지 = 10건)
+  full-max-pages: 1000 # 전체 수집(/api/crawl/all) 안전 상한. 마지막 페이지에서 보통 먼저 멈춘다
+  incremental:           # 증분 배치 (새 공고만)
+    enabled: true
+    cron: "0 0 9-18 * * MON-FRI"   # 초 분 시 일 월 요일 -> 평일 9~18시 매시 정각 (테스트할 땐 "0 */10 * * * *" = 10분마다)
+    max-pages: 10                  # 한 번에 최대 10페이지
+    stop-after-idle-pages: 2       # 새 공고 없는 페이지가 2번 연속이면 멈춤
 
 nexacro:
   # 넥사크로 화면이 뜨는 주소. 브라우저 주소창에 보이는 값과 정확히 같아야 한다 (localhost와 127.0.0.1은 다른 출처)

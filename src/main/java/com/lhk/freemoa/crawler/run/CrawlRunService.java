@@ -36,10 +36,10 @@ public class CrawlRunService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public long start(String keyword) {
+    public long start(String keyword, CrawlRunType runType) {
         long runId = crawlRunMapper.selectNextRunId();
         try {
-            crawlRunMapper.insertRunning(runId, keyword);
+            crawlRunMapper.insertRunning(runId, keyword, runType);
         } catch (DuplicateKeyException e) {
             throw new CrawlAlreadyRunningException("이미 진행 중인 수집이 있습니다. 끝난 뒤 다시 시도하세요.", e);
         }
@@ -50,6 +50,23 @@ public class CrawlRunService {
     public void finish(long runId, CrawlStatus status, int pageCount, int fetched,
                        int inserted, int updated, int failed, String errorMsg) {
         crawlRunMapper.updateFinish(runId, status, pageCount, fetched, inserted, updated, failed, truncate(errorMsg));
+    }
+
+    /** [6단계] 진행 건수 갱신. 이것도 즉시 커밋해야 다른 세션(DBeaver, 조회 API)에서 보인다 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void progress(long runId, int pageCount, int fetched, int inserted, int updated, int failed) {
+        crawlRunMapper.updateProgress(runId, pageCount, fetched, inserted, updated, failed);
+    }
+
+    /** [6단계] 서버 시작 시 남아 있는 RUNNING 정리. 정리한 건수를 돌려준다 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int failStaleRunning() {
+        return crawlRunMapper.failStaleRunning("서버 재시작으로 중단됨");
+    }
+
+    @Transactional(readOnly = true)
+    public CrawlRunView find(long runId) {
+        return crawlRunMapper.selectRun(runId);
     }
 
     private static String truncate(String message) {
