@@ -6,6 +6,9 @@ import com.lhk.freemoa.crawler.api.dto.FreemoaListResponse;
 import com.lhk.freemoa.crawler.convert.ProjectConverter;
 import com.lhk.freemoa.crawler.domain.Project;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +18,8 @@ import java.util.List;
  * "어떻게 가져오는지"(ApiClient)와 "어떻게 변환하는지"(Converter)는 모르고, 순서만 조율한다.
  */
 public class ProjectCollector {
+
+    private static final Logger log = LoggerFactory.getLogger(ProjectCollector.class);
 
     /** 프리모아 목록 API는 한 페이지에 10건씩 준다 */
     private static final int PAGE_SIZE = 10;
@@ -78,7 +83,7 @@ public class ProjectCollector {
                 return page - 1; // 더 이상 데이터 없음
             }
 
-            List<Project> projects = items.stream().map(converter::convert).toList();
+            List<Project> projects = convertEach(page, items);
             boolean keepGoing = handler.onPage(page, projects);
 
             if (!keepGoing || isLastPage(page, items.size(), section.pagination())) {
@@ -86,6 +91,24 @@ public class ProjectCollector {
             }
         }
         return maxPages;
+    }
+
+    /**
+     * 한 건씩 변환하고, 실패한 공고는 로그만 남기고 건너뛴다.
+     * items.stream().map(converter::convert).toList()로 한 번에 하면, 1건이 예외를 던지는 순간
+     * 그 페이지 나머지 9건도 버려지고 수집 전체가 멈춘다. (실제로 마감일 "0000-00-00" 1건 때문에 전체 수집이 멈췄다)
+     * 외부 데이터는 언제든 예상 못 한 값이 올 수 있으니, 1건의 이상이 전체를 막지 않게 한다.
+     */
+    private List<Project> convertEach(int page, List<FreemoaListResponse.Item> items) {
+        List<Project> projects = new ArrayList<>(items.size());
+        for (FreemoaListResponse.Item item : items) {
+            try {
+                projects.add(converter.convert(item));
+            } catch (RuntimeException e) {
+                log.warn("변환 실패로 건너뜀 page={}, projIdx={}: {}", page, item.projIdx(), e.getMessage());
+            }
+        }
+        return projects;
     }
 
     /** 받은 건수가 한 페이지 분량보다 적거나, 지금까지 본 건수가 전체 건수에 도달하면 마지막 페이지 */

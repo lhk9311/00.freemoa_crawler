@@ -18,6 +18,7 @@
 | 10 | 넥사크로 실행 시 빈 화면 | WorkFrame `formurl`이 빈 폼을 가리킴 | 화면 |
 | 11 | 브라우저 실행 시 `[skills] FAILED` (CORS error) | 넥사크로가 인자 없는 요청을 GET으로 보냄, 서버는 POST만 허용 | CORS |
 | 12 | 전체 수집 클릭 시 "처리 중 오류"인데 수집은 계속 돎 | MyBatis 별칭 `long`/`int`가 래퍼 타입이라 record 생성자를 못 찾음 | MyBatis |
+| 13 | 전체 수집 도중 `DateTimeParseException: '0000-00-00'` | MySQL식 빈 날짜, 그리고 1건 실패가 수집 전체를 멈춤 | 데이터 |
 
 ---
 
@@ -167,3 +168,22 @@ git push origin main
   - 일반 메시지("처리 중 오류")는 의도된 것이다. 상세 내용은 서버 로그에만 남긴다 (내부 정보 노출 방지). 그래서 원인은 항상 서버 로그에서 찾는다.
   - 백그라운드 작업은 화면 요청이 실패해도 계속 돈다. "실패"라고 떴다고 작업 자체가 실패한 건 아닐 수 있다. 이력 테이블로 실제 상태를 확인한다.
   - MyBatis 로그의 `<== Updates: 1`은 영향받은 행 수다. MERGE는 INSERT든 UPDATE든 1이다. 신규/갱신 구분은 우리 로그(`공고 저장 완료: 신규 N건, 갱신 N건`)를 본다.
+
+## 13. 전체 수집 도중 DateTimeParseException: Text '0000-00-00'
+
+- **증상**: 전체 수집이 몇 페이지 돌다가 멈추고 PARTIAL로 끝남.
+  ```
+  java.time.format.DateTimeParseException: Text '0000-00-00' could not be parsed:
+  Invalid value for MonthOfYear (valid values 1 - 12): 0
+      at ...ProjectConverter.parseDate(ProjectConverter.java:73)
+      at ...ProjectCollector.collectEachPage(ProjectCollector.java:81)
+  ```
+- **원인 1**: 마감일 없는 공고의 `edate`가 `"0000-00-00"`이다. MySQL이 "날짜 없음"을 이렇게 저장하는 오래된 관습이고, 자바 `LocalDate`에는 0월이 없다.
+- **원인 2**: `items.stream().map(converter::convert).toList()`로 한 번에 변환해서, 1건의 예외가 그 페이지 전체와 수집 전체를 멈췄다.
+- **해결**
+  - `ProjectConverter.isZeroDate()`: `0000-00-00`으로 시작하면 null
+  - `ProjectCollector.convertEach()`: 한 건씩 변환, 실패한 건은 경고 로그만 남기고 건너뜀
+  - `ProjectConverterTest.convert_zeroDate()` 추가
+- **배운 점**
+  - 스택트레이스는 위에서부터 읽되, 내 패키지(`com.lhk.freemoa`)가 처음 나오는 줄이 출발점이다. `Caused by:`가 진짜 원인이다.
+  - 외부 데이터는 샘플 몇 건으로 다 알 수 없다. 전체를 돌려봐야 이런 값이 나온다. 그래서 "1건 이상이 전체를 막지 않는 구조"가 중요하다.

@@ -65,11 +65,20 @@ public class ProjectConverter {
 
     private static LocalDateTime parseDateTime(String value) {
         String v = blankToNull(value);
-        return v == null ? null : LocalDateTime.parse(v, POSTED_AT_FORMAT);
+        return (v == null || isZeroDate(v)) ? null : LocalDateTime.parse(v, POSTED_AT_FORMAT);
     }
 
     private static LocalDate parseDate(String value) {
         String v = blankToNull(value);
-        return v == null ? null : LocalDate.parse(v); // 기본 형식 yyyy-MM-dd
+        return (v == null || isZeroDate(v)) ? null : LocalDate.parse(v); // 기본 형식 yyyy-MM-dd
+    }
+
+    /**
+     * MySQL은 "날짜 없음"을 0000-00-00 (또는 0000-00-00 00:00:00)으로 저장하는 오래된 관습이 있다.
+     * 자바 LocalDate에는 0월 0일이 없어서 그대로 파싱하면 DateTimeParseException이 난다.
+     * 프리모아는 마감일이 없는 공고에 이 값을 보낸다 -> null(마감일 없음)로 본다.
+     */
+    private static boolean isZeroDate(String value) {
+        return value.startsWith("0000-00-00");
     }
 }

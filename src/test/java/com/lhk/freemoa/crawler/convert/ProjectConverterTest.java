@@ -69,6 +69,22 @@ class ProjectConverterTest {
         assertThat(p.summary()).isNull();
     }
 
+    @Test
+    @DisplayName("MySQL식 빈 날짜 0000-00-00은 예외 없이 null로 바뀐다")
+    void convert_zeroDate() {
+        FreemoaListResponse.Item item = new FreemoaListResponse.Item(
+                "48000", "마감일 없는 공고", "개발", "웹", "서울", null, "1", "30",
+                "0", "0", "5", "Java", null,
+                "0000-00-00 00:00:00",  // INS_TIME
+                "0000-00-00");          // edate
+
+        Project p = converter.convert(item);
+
+        assertThat(p.deadline()).isNull();
+        assertThat(p.postedAt()).isNull();
+        assertThat(p.skills()).containsExactly("Java");
+    }
+
     private List<FreemoaListResponse.Item> items() {
         return response.data().project().list();
     }
