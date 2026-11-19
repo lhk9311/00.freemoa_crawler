@@ -17,6 +17,7 @@
 | 9 | `git push` rejected (non-fast-forward) | 로컬 main이 원격 main보다 뒤처짐 | Git |
 | 10 | 넥사크로 실행 시 빈 화면 | WorkFrame `formurl`이 빈 폼을 가리킴 | 화면 |
 | 11 | 브라우저 실행 시 `[skills] FAILED` (CORS error) | 넥사크로가 인자 없는 요청을 GET으로 보냄, 서버는 POST만 허용 | CORS |
+| 12 | 전체 수집 클릭 시 "처리 중 오류"인데 수집은 계속 돎 | MyBatis 별칭 `long`/`int`가 래퍼 타입이라 record 생성자를 못 찾음 | MyBatis |
 
 ---
 
@@ -146,3 +147,23 @@ git push origin main
   - `ProjectScreenController`: `@RequestMapping(value = "/skills", method = {RequestMethod.GET, RequestMethod.POST})`
   - `WebConfig`: `.allowedMethods("GET", "POST", "OPTIONS")`
 - **배운 점**: CORS 에러는 다른 원인(메서드 불일치, 404, 서버 에러)을 가리는 껍데기인 경우가 많다. Console 문구 전체와 실제 메서드를 먼저 본다. 같은 설정인데 한 요청만 실패하면 두 요청의 차이(메서드, 헤더, 경로)를 비교한다.
+
+## 12. 전체 수집 클릭 시 "처리 중 오류가 발생했습니다"인데 수집은 계속 돎
+
+- **증상**: 화면에는 `[crawlFull] 처리 중 오류가 발생했습니다`. 그런데 IntelliJ 로그에는 페이지별 저장이 계속 찍힌다.
+- **원인**: 접수(RUNNING 기록, 백그라운드 시작)까지는 성공했고, 그 다음 화면에 돌려줄 이력 1행을 조회하는 `selectRun`이 실패했다.
+  `CrawlRunMapper.xml`의 `<constructor>`에 `javaType="long"`, `javaType="int"`로 적었는데, MyBatis 별칭에서 이 둘은 래퍼 타입이다.
+
+  | 별칭 | 실제 타입 |
+  |---|---|
+  | `long` | `java.lang.Long` |
+  | `_long` | `long` |
+  | `int` | `java.lang.Integer` |
+  | `_int` | `int` |
+
+  `CrawlRunView` record는 기본형 `long`, `int`를 받으므로 `(Long, String, ..., Integer)` 생성자를 찾다가 실패한다.
+- **해결**: `_long`, `_int`로 수정.
+- **배운 점**
+  - 일반 메시지("처리 중 오류")는 의도된 것이다. 상세 내용은 서버 로그에만 남긴다 (내부 정보 노출 방지). 그래서 원인은 항상 서버 로그에서 찾는다.
+  - 백그라운드 작업은 화면 요청이 실패해도 계속 돈다. "실패"라고 떴다고 작업 자체가 실패한 건 아닐 수 있다. 이력 테이블로 실제 상태를 확인한다.
+  - MyBatis 로그의 `<== Updates: 1`은 영향받은 행 수다. MERGE는 INSERT든 UPDATE든 1이다. 신규/갱신 구분은 우리 로그(`공고 저장 완료: 신규 N건, 갱신 N건`)를 본다.

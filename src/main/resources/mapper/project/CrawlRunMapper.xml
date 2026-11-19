@@ -56,20 +56,26 @@
     <!--
       [6단계] record는 setter가 없어서 생성자로 값을 넣어야 한다.
       constructor/arg는 위에서부터 순서대로 record의 생성자 파라미터에 들어간다 (순서와 타입이 맞아야 함).
+
+      javaType 별칭 주의 (MyBatis)
+        long  -> java.lang.Long   (래퍼)      _long -> long (기본형)
+        int   -> java.lang.Integer (래퍼)     _int  -> int  (기본형)
+      CrawlRunView는 기본형(long, int)을 받으므로 _long, _int를 써야 생성자를 찾는다.
+      틀리면 "No constructor found in CrawlRunView matching [java.lang.Long, ...]" 에러.
     -->
     <resultMap id="crawlRunViewMap" type="com.lhk.freemoa.crawler.run.CrawlRunView">
         <constructor>
-            <arg column="RUN_ID"       javaType="long"/>
+            <arg column="RUN_ID"       javaType="_long"/>
             <arg column="RUN_TYPE"     javaType="string"/>
             <arg column="STATUS"       javaType="string"/>
             <arg column="KEYWORD"      javaType="string"/>
             <arg column="STARTED_AT"   javaType="java.time.LocalDateTime"/>
             <arg column="ENDED_AT"     javaType="java.time.LocalDateTime"/>
-            <arg column="PAGE_COUNT"   javaType="int"/>
-            <arg column="FETCHED_CNT"  javaType="int"/>
-            <arg column="INSERTED_CNT" javaType="int"/>
-            <arg column="UPDATED_CNT"  javaType="int"/>
-            <arg column="FAILED_CNT"   javaType="int"/>
+            <arg column="PAGE_COUNT"   javaType="_int"/>
+            <arg column="FETCHED_CNT"  javaType="_int"/>
+            <arg column="INSERTED_CNT" javaType="_int"/>
+            <arg column="UPDATED_CNT"  javaType="_int"/>
+            <arg column="FAILED_CNT"   javaType="_int"/>
             <arg column="ERROR_MSG"    javaType="string"/>
         </constructor>
     </resultMap>
