@@ -39,6 +39,15 @@
             <version>${mybatis-starter.version}</version>
         </dependency>
 
+        <!--
+          JPA (Hibernate): 일부 조회 기능을 JPA로 구현해서 MyBatis와 비교하기 위함.
+          저장(쓰기)은 계속 MyBatis가 담당한다. 둘은 같은 DataSource와 트랜잭션 매니저를 공유한다.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
         <!-- Oracle JDBC 드라이버 (버전은 부모 POM이 관리) -->
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>

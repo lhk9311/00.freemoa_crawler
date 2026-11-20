@@ -8,6 +8,13 @@ spring:
     username: freemoa
     # 비밀번호는 코드에 쓰지 않고 환경변수로 주입한다 (IntelliJ 실행 설정 > Environment variables > DB_PASSWORD=...)
     password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      # 중요: 테이블은 db/*.sql로 직접 관리한다. JPA가 테이블을 만들거나 바꾸지 못하게 none.
+      # (create, update로 두면 엔티티 모양대로 테이블을 바꿔버린다. 운영에선 절대 금지)
+      ddl-auto: none
+    # 화면 렌더링까지 DB 연결을 붙잡아 두는 기능. REST API에서는 필요 없고, 켜 두면 경고가 뜬다.
+    open-in-view: false
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
@@ -36,3 +43,6 @@ logging:
   level:
     # 실행되는 SQL을 로그로 확인 (mapper 패키지 DEBUG)
     com.lhk.freemoa: DEBUG
+    # JPA가 만든 SQL과 바인딩 값 (MyBatis 로그와 비교해 보기)
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE

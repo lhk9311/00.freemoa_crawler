@@ -412,6 +412,85 @@
           ]
         }
       ]
+    },
+    {
+      "name": "3. 통계 / 이력 (MyBatis, JPA)",
+      "item": [
+        {
+          "name": "통계 (차트 데이터)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stats"
+              ]
+            },
+            "description": "기술/지역/예산/월별 통계. 화면은 /stats.html"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"기술 통계가 있다\", () => pm.expect(r.skills).to.be.an(\"array\"));",
+                  "pm.test(\"지역 비율 합이 약 100%\", () => { const s = r.regions.reduce((a, x) => a + x.pct, 0); pm.expect(s).to.be.within(99, 101); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "수집 이력 목록 (JPA)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/crawl/history?runType=INCREMENTAL&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "crawl",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "runType",
+                  "value": "INCREMENTAL"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "JPA 리포지토리로 조회. runType 비우면 전체"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"최신순\", () => { const ids = r.runs.map(x => x.runId); pm.expect(ids).to.eql([...ids].sort((a, b) => b - a)); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -25,3 +25,9 @@ POST http://localhost:8080/api/crawl/all
 
 ### [6단계] 증분 수집 지금 1번 실행 (배치 기다리지 않고 테스트)
 POST http://localhost:8080/api/crawl/incremental
+
+### [통계] 차트 데이터 (화면: http://localhost:8080/stats.html)
+GET http://localhost:8080/api/stats
+
+### [JPA] 수집 이력 목록 + 종류별 요약
+GET http://localhost:8080/api/crawl/history?runType=INCREMENTAL&size=10
