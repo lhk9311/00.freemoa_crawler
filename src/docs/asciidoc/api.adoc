@@ -1,0 +1,85 @@
+= freemoa-crawler 수집 API
+:doctype: book
+:toc: left
+:toclevels: 2
+:sectnums:
+:source-highlighter: highlightjs
+
+프리모아 공고 수집 API 문서. 이 문서의 요청·응답 예시는 `CrawlControllerDocsTest` 가 실제로 호출한 결과로 만들어진다.
+테스트가 실패하면 문서도 만들어지지 않는다.
+
+[[overview]]
+== 개요
+
+|===
+| 종류 | API | 응답
+
+| 수동 수집 | `POST /api/crawl` | 끝날 때까지 기다림 (200)
+| 전체 수집 | `POST /api/crawl/all` | 접수만 하고 runId 즉시 응답 (202)
+| 진행 상황 | `GET /api/crawl/runs/{runId}` | 수집 이력 1건 (200 / 404)
+| 증분 수집 | `POST /api/crawl/incremental` | 새 공고가 끊길 때까지 수집 (200)
+|===
+
+오류 응답은 `{"error": "메시지"}` 형식이다.
+
+|===
+| 상태 코드 | 의미
+
+| 400 | 요청 값이 잘못됨 (예: maxPages 범위 초과)
+| 409 | 다른 수집이 실행 중
+| 502 | 프리모아 요청 실패
+|===
+
+[[crawl-manual]]
+== 수동 수집
+
+지정한 페이지 수만큼 수집하고 결과를 돌려준다.
+
+=== 요청
+include::{snippets}/crawl-manual/http-request.adoc[]
+include::{snippets}/crawl-manual/query-parameters.adoc[]
+
+=== 응답
+include::{snippets}/crawl-manual/http-response.adoc[]
+include::{snippets}/crawl-manual/response-fields.adoc[]
+
+[[crawl-full]]
+== 전체 수집
+
+마지막 페이지까지 백그라운드로 수집한다. 응답의 `runId` 로 진행 상황을 조회한다.
+
+=== 요청
+include::{snippets}/crawl-full/http-request.adoc[]
+
+=== 응답
+include::{snippets}/crawl-full/http-response.adoc[]
+include::{snippets}/crawl-full/response-fields.adoc[]
+
+=== 다른 수집이 실행 중일 때 (409)
+include::{snippets}/crawl-full-conflict/http-response.adoc[]
+
+[[crawl-run]]
+== 진행 상황 조회
+
+=== 요청
+include::{snippets}/crawl-run/http-request.adoc[]
+include::{snippets}/crawl-run/path-parameters.adoc[]
+
+=== 응답
+include::{snippets}/crawl-run/http-response.adoc[]
+include::{snippets}/crawl-run/response-fields.adoc[]
+
+=== 없는 runId (404)
+include::{snippets}/crawl-run-not-found/http-response.adoc[]
+
+[[crawl-incremental]]
+== 증분 수집
+
+1페이지부터 보다가 새 공고가 없는 페이지가 2번 연속 나오면 멈춘다. 평일 9~18시 정각에 배치로도 실행된다.
+
+=== 요청
+include::{snippets}/crawl-incremental/http-request.adoc[]
+
+=== 응답
+include::{snippets}/crawl-incremental/http-response.adoc[]
+include::{snippets}/crawl-incremental/response-fields.adoc[]
