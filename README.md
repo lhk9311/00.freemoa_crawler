@@ -4,7 +4,6 @@
 넥사크로 N 화면에서 조회와 수집 실행까지 할 수 있는 학습용 백엔드 프로젝트.
 처음 한 번 전체 공고를 받고, 이후에는 배치가 매시 새 공고만 가져온다.
 
-기능 수보다 SI 현장에서 매일 쓰는 기술을 깊게 다루는 데 목적이 있다.
 Java 기본기(DI, 예외, 컬렉션/스트림), Oracle SQL(정규화, MERGE, 서브쿼리, 페이징),
 트랜잭션, 넥사크로 연동, Git 브랜치/PR 흐름을 단계별로 쌓는다.
 
@@ -227,24 +226,7 @@ erDiagram
 | `docs/07-full-and-incremental.md` | 전체 수집, 증분 배치, 화면 폴링 |
 | `docs/08-study-notes-1119.md` | 학습 노트 (DB 설계, 파싱 흐름, 배치, 디버깅) |
 
-## 실행 방법
-
-### DB 준비
-1. `system` 계정으로 `FREEPDB1` 접속 후 프로젝트 계정 생성
-   ```sql
-   CREATE USER freemoa IDENTIFIED BY "비밀번호"
-     DEFAULT TABLESPACE USERS QUOTA UNLIMITED ON USERS;
-   GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW,
-         CREATE SEQUENCE, CREATE PROCEDURE, CREATE TRIGGER TO freemoa;
-   ```
-2. `freemoa` 계정으로 `db/` 스크립트를 번호 순서대로 실행 (`01` → `02` → `03`)
-
 ### 애플리케이션
-DB 비밀번호는 환경변수로 주입한다. IntelliJ `Run > Edit Configurations > Environment variables`
-```
-DB_PASSWORD=비밀번호
-```
-- DB 연결 확인: http://localhost:8080/health/db
 - API 호출: `http/crawl.http`
 
 | API | 설명 |
@@ -268,3 +250,7 @@ DB_PASSWORD=비밀번호
 - User-Agent에 학습용 프로그램임을 밝힌다.
 - 의뢰인 이메일 등 개인정보는 수집하지 않는다. (응답에 있어도 DTO에 필드를 두지 않음)
 - 수집 데이터는 개인 학습 용도로만 사용한다.
+
+## 실행 화면
+
+![공고 조회 화면](docs/images/nexacro_freemoa.png)
