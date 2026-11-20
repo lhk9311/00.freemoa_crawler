@@ -64,14 +64,17 @@
         </Grid>
 
         <!-- ===== 수집 실행 ===== -->
-        <Static id="sta_crawl" taborder="15" text="수집 검색어" left="20" top="676" width="80" height="28"/>
-        <Edit id="edt_crawlKeyword" taborder="16" left="100" top="676" width="160" height="28"/>
-        <Static id="sta_crawlPages" taborder="17" text="페이지 수" left="280" top="676" width="70" height="28"/>
-        <Edit id="edt_crawlPages" taborder="18" value="1" left="350" top="676" width="60" height="28"/>
-        <Button id="btn_crawl" taborder="19" text="수집 실행" left="430" top="676" width="100" height="28" onclick="btn_crawl_onclick"/>
-        <Button id="btn_crawlNew" taborder="20" text="새 공고만" left="550" top="676" width="100" height="28" onclick="btn_crawlNew_onclick"/>
-        <Button id="btn_crawlFull" taborder="21" text="전체 수집" left="660" top="676" width="100" height="28" onclick="btn_crawlFull_onclick"/>
-        <Static id="sta_runStatus" taborder="22" text="" left="780" top="676" width="480" height="28"/>
+        <!-- ===== 수집 (화면 아래에 고정) =====
+             top="676"처럼 위에서부터 고정하면, 창 높이가 720보다 작을 때 bottom 기준으로 늘어나는 그리드와 겹친다.
+             그리드(bottom="64")와 같은 기준(아래)에서 bottom="20"으로 붙이면 창 크기와 상관없이 20px 간격이 유지된다. -->
+        <Static id="sta_crawl" taborder="15" text="수집 검색어" left="20" bottom="20" width="80" height="28"/>
+        <Edit id="edt_crawlKeyword" taborder="16" left="100" bottom="20" width="160" height="28"/>
+        <Static id="sta_crawlPages" taborder="17" text="페이지 수" left="280" bottom="20" width="70" height="28"/>
+        <Edit id="edt_crawlPages" taborder="18" value="1" left="350" bottom="20" width="60" height="28"/>
+        <Button id="btn_crawl" taborder="19" text="수집 실행" left="430" bottom="20" width="100" height="28" onclick="btn_crawl_onclick"/>
+        <Button id="btn_crawlNew" taborder="20" text="새 공고만" left="550" bottom="20" width="100" height="28" onclick="btn_crawlNew_onclick"/>
+        <Button id="btn_crawlFull" taborder="21" text="전체 수집" left="660" bottom="20" width="100" height="28" onclick="btn_crawlFull_onclick"/>
+        <Static id="sta_runStatus" taborder="22" text="" left="780" right="20" bottom="20" height="28"/>
       </Layout>
     </Layouts>
 
