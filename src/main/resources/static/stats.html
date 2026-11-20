@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>프리모아 공고 통계</title>
+<!--
+  서버 실행 후 http://localhost:8080/stats.html
+  데이터: GET /api/stats (StatsController) -> 차트: Chart.js
+  Spring Boot는 src/main/resources/static/ 아래 파일을 그대로 내보낸다 (컨트롤러 없이).
+-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body { margin: 0; font-family: "Malgun Gothic", sans-serif; background: #f5f6f8; color: #222; }
+  header { padding: 20px 32px; background: #fff; border-bottom: 1px solid #e3e5e8; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  header p { margin: 6px 0 0; color: #666; font-size: 13px; }
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 32px 0; }
+  .card { background: #fff; border: 1px solid #e3e5e8; border-radius: 8px; padding: 16px 20px; }
+  .card .k { font-size: 12px; color: #777; }
+  .card .v { font-size: 22px; font-weight: 600; margin-top: 6px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 32px 32px; }
+  .panel { background: #fff; border: 1px solid #e3e5e8; border-radius: 8px; padding: 16px 20px; }
+  .panel h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .panel .desc { margin: 0 0 12px; color: #777; font-size: 12px; }
+  .panel.wide { grid-column: span 2; }
+  .chart { position: relative; height: 320px; }
+  #error { display: none; margin: 20px 32px; padding: 12px 16px; background: #fdecec; color: #a12; border-radius: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>프리모아 공고 통계</h1>
+  <p id="asOf">불러오는 중...</p>
+</header>
+
+<div id="error"></div>
+
+<section class="summary">
+  <div class="card"><div class="k">전체 공고</div><div class="v" id="sumTotal">-</div></div>
+  <div class="card"><div class="k">가장 많이 요구된 기술</div><div class="v" id="sumSkill">-</div></div>
+  <div class="card"><div class="k">공고가 가장 많은 지역</div><div class="v" id="sumRegion">-</div></div>
+  <div class="card"><div class="k">예산 협의 비율</div><div class="v" id="sumNego">-</div></div>
+</section>
+
+<section class="grid">
+  <div class="panel wide">
+    <h2>기술별 요구 비율 (상위 15)</h2>
+    <p class="desc">전체 공고 중 그 기술을 요구하는 공고의 비율. 공고 하나에 기술이 여러 개라 합계는 100%를 넘는다. 막대에 마우스를 올리면 공고 수와 평균 지원자 수가 보인다.</p>
+    <div class="chart"><canvas id="skillChart"></canvas></div>
+  </div>
+  <div class="panel">
+    <h2>지역별 비율</h2>
+    <p class="desc">상위 7개 지역 + 나머지는 기타</p>
+    <div class="chart"><canvas id="regionChart"></canvas></div>
+  </div>
+  <div class="panel">
+    <h2>최대 예산 구간</h2>
+    <p class="desc">단위 만원. 예산 미입력은 협의</p>
+    <div class="chart"><canvas id="budgetChart"></canvas></div>
+  </div>
+  <div class="panel wide">
+    <h2>월별 신규 공고 (최근 12개월)</h2>
+    <p class="desc">막대: 그 달 등록된 공고 수 / 선: 누적 (SQL 윈도우 함수 SUM OVER)</p>
+    <div class="chart"><canvas id="monthlyChart"></canvas></div>
+  </div>
+</section>
+
+<script>
+const BLUE = '#3b6fd8', BLUE_LIGHT = 'rgba(59,111,216,0.15)', GRAY = '#9aa1ab';
+const PALETTE = ['#3b6fd8', '#2a9d8f', '#e9a23b', '#d1495b', '#7b5ea7', '#5c8a3a', '#c06c84', '#9aa1ab'];
+
+Chart.defaults.font.family = '"Malgun Gothic", sans-serif';
+Chart.defaults.color = '#444';
+
+function fmt(n) { return Number(n).toLocaleString('ko-KR'); }
+
+/** 상위 n개만 남기고 나머지는 '기타'로 합친다 */
+function topWithOthers(rows, n) {
+  if (rows.length <= n) return rows;
+  const top = rows.slice(0, n);
+  const rest = rows.slice(n);
+  top.push({
+    label: '기타',
+    cnt: rest.reduce((s, r) => s + r.cnt, 0),
+    pct: Math.round(rest.reduce((s, r) => s + (r.pct || 0), 0) * 10) / 10
+  });
+  return top;
+}
+
+function renderSummary(d) {
+  document.getElementById('sumTotal').textContent = fmt(d.totalProjects) + '건';
+  document.getElementById('sumSkill').textContent = d.skills.length ? d.skills[0].label + ' ' + d.skills[0].pct + '%' : '-';
+  document.getElementById('sumRegion').textContent = d.regions.length ? d.regions[0].label + ' ' + d.regions[0].pct + '%' : '-';
+  const nego = d.budgets.find(b => b.label === '협의');
+  document.getElementById('sumNego').textContent = nego ? nego.pct + '%' : '0%';
+  document.getElementById('asOf').textContent = '조회 시각 ' + new Date().toLocaleString('ko-KR') + ' · 데이터: /api/stats';
+}
+
+function renderSkills(rows) {
+  new Chart(document.getElementById('skillChart'), {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [{ label: '요구 비율(%)', data: rows.map(r => r.pct), backgroundColor: BLUE, borderRadius: 3 }]
+    },
+    options: {
+      indexAxis: 'y',
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => {
+          const r = rows[c.dataIndex];
+          return `${r.pct}% · ${fmt(r.cnt)}건 · 평균 지원자 ${r.extra ?? 0}명`;
+        } } }
+      },
+      scales: { x: { ticks: { callback: v => v + '%' } } }
+    }
+  });
+}
+
+function renderRegions(rows) {
+  const data = topWithOthers(rows, 7);
+  new Chart(document.getElementById('regionChart'), {
+    type: 'doughnut',
+    data: {
+      labels: data.map(r => r.label),
+      datasets: [{ data: data.map(r => r.cnt), backgroundColor: PALETTE, borderWidth: 1 }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right' },
+        tooltip: { callbacks: { label: c => `${data[c.dataIndex].label}: ${fmt(data[c.dataIndex].cnt)}건 (${data[c.dataIndex].pct}%)` } }
+      }
+    }
+  });
+}
+
+function renderBudgets(rows) {
+  new Chart(document.getElementById('budgetChart'), {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [{ label: '공고 수', data: rows.map(r => r.cnt),
+                   backgroundColor: rows.map(r => r.label === '협의' ? GRAY : BLUE), borderRadius: 3 }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => `${fmt(rows[c.dataIndex].cnt)}건 (${rows[c.dataIndex].pct}%)` } }
+      }
+    }
+  });
+}
+
+function renderMonthly(rows) {
+  new Chart(document.getElementById('monthlyChart'), {
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [
+        { type: 'bar', label: '신규 공고', data: rows.map(r => r.cnt), backgroundColor: BLUE, borderRadius: 3, yAxisID: 'y' },
+        { type: 'line', label: '누적', data: rows.map(r => r.extra), borderColor: '#e9a23b',
+          backgroundColor: 'rgba(233,162,59,0.15)', tension: 0.2, yAxisID: 'y2' }
+      ]
+    },
+    options: {
+      maintainAspectRatio: false,
+      scales: {
+        y:  { position: 'left',  title: { display: true, text: '신규' } },
+        y2: { position: 'right', title: { display: true, text: '누적' }, grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+}
+
+fetch('/api/stats')
+  .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+  .then(d => {
+    renderSummary(d);
+    renderSkills(d.skills);
+    renderRegions(d.regions);
+    renderBudgets(d.budgets);
+    renderMonthly(d.monthly);
+  })
+  .catch(e => {
+    const el = document.getElementById('error');
+    el.style.display = 'block';
+    el.textContent = '통계를 불러오지 못했습니다 (' + e.message + '). 서버가 켜져 있는지, IntelliJ 콘솔에 에러가 있는지 확인하세요.';
+  });
+</script>
+</body>
+</html>
