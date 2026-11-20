@@ -1,0 +1,417 @@
+{
+  "info": {
+    "name": "freemoa-crawler",
+    "description": "프리모아 공고 수집/조회 API. 환경 변수 baseUrl(기본 http://localhost:8080)과 runId를 쓴다.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "runId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. 상태 확인",
+      "item": [
+        {
+          "name": "DB 연결 확인",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/db",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "db"
+              ]
+            },
+            "description": "서버와 Oracle 연결 확인"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. 수집 API (JSON)",
+      "item": [
+        {
+          "name": "수동 수집 (java, 1페이지)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/crawl?keyword=java&maxPages=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "crawl"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "java"
+                },
+                {
+                  "key": "maxPages",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "지정 페이지만 수집. 끝날 때까지 기다린다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"status가 있다\", () => pm.expect(r.status).to.be.oneOf([\"SUCCESS\",\"PARTIAL\",\"FAIL\"]));",
+                  "pm.collectionVariables.set(\"runId\", r.runId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "수동 수집 - 페이지 초과 (400)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/crawl?maxPages=999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "crawl"
+              ],
+              "query": [
+                {
+                  "key": "maxPages",
+                  "value": "999"
+                }
+              ]
+            },
+            "description": "maxPages 상한(30) 초과 -> 400"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "전체 수집 접수 (202)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/crawl/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "crawl",
+                "all"
+              ]
+            },
+            "description": "백그라운드로 마지막 페이지까지. runId를 변수에 저장한다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"202 Accepted\", () => pm.response.to.have.status(202));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set(\"runId\", r.runId);",
+                  "console.log(\"runId =\", r.runId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "전체 수집 중복 요청 (409)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/crawl/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "crawl",
+                "all"
+              ]
+            },
+            "description": "전체 수집이 돌고 있을 때 다시 보내면 409"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 Conflict\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "진행 상황 조회",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/crawl/runs/{{runId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "crawl",
+                "runs",
+                "{{runId}}"
+              ]
+            },
+            "description": "위 요청이 저장한 runId로 조회. 여러 번 보내며 pageCount가 오르는지 본다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"runId 일치\", () => pm.expect(String(r.runId)).to.eql(pm.collectionVariables.get(\"runId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "증분 수집 1회",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/crawl/incremental",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "crawl",
+                "incremental"
+              ]
+            },
+            "description": "새 공고 없는 페이지가 2번 연속이면 멈춘다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. 넥사크로 화면 API (XML)",
+      "item": [
+        {
+          "name": "기술 콤보 (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/nx/skills",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "nx",
+                "skills"
+              ]
+            },
+            "description": "넥사크로는 인자 없는 transaction을 GET으로 보낸다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ErrorCode = 0\", () => pm.expect(pm.response.text()).to.include('<Parameter id=\"ErrorCode\" type=\"int\">0</Parameter>'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "공고 조회",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/xml"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/nx/projects/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "nx",
+                "projects",
+                "search"
+              ]
+            },
+            "description": "넥사크로 transaction과 같은 형식의 XML을 직접 보낸다.",
+            "body": {
+              "mode": "raw",
+              "raw": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Root xmlns=\"http://www.nexacroplatform.com/platform/dataset\">\n  <Parameters><Parameter id=\"keyword\">java</Parameter><Parameter id=\"page\">1</Parameter><Parameter id=\"pageSize\">10</Parameter></Parameters>\n</Root>"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ErrorCode = 0\", () => pm.expect(pm.response.text()).to.include('<Parameter id=\"ErrorCode\" type=\"int\">0</Parameter>'));",
+                  "pm.test(\"ds_list가 온다\", () => pm.expect(pm.response.text()).to.include('<Dataset id=\"ds_list\">'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "수집 이력 1건",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/xml"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/nx/crawl/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "nx",
+                "crawl",
+                "run"
+              ]
+            },
+            "description": "runId 파라미터로 진행 상황(ds_run)",
+            "body": {
+              "mode": "raw",
+              "raw": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Root xmlns=\"http://www.nexacroplatform.com/platform/dataset\">\n  <Parameters><Parameter id=\"runId\">{{runId}}</Parameter></Parameters>\n</Root>"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ErrorCode = 0\", () => pm.expect(pm.response.text()).to.include('<Parameter id=\"ErrorCode\" type=\"int\">0</Parameter>'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "잘못된 요청 (ErrorCode -1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/xml"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/nx/crawl/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "nx",
+                "crawl",
+                "run"
+              ]
+            },
+            "description": "없는 runId -> HTTP는 200, ErrorCode=-1",
+            "body": {
+              "mode": "raw",
+              "raw": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Root xmlns=\"http://www.nexacroplatform.com/platform/dataset\">\n  <Parameters><Parameter id=\"runId\">0</Parameter></Parameters>\n</Root>"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ErrorCode = -1\", () => pm.expect(pm.response.text()).to.include('type=\"int\">-1</Parameter>'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
