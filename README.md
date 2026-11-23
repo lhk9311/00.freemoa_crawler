@@ -225,6 +225,10 @@ erDiagram
 | `docs/06-troubleshooting.md` | 실제로 막혔던 오류와 해결 |
 | `docs/07-full-and-incremental.md` | 전체 수집, 증분 배치, 화면 폴링 |
 | `docs/08-study-notes-1119.md` | 학습 노트 (DB 설계, 파싱 흐름, 배치, 디버깅) |
+| `docs/09-debugging-and-postman.md` | 디버깅 실습, Postman 컬렉션 |
+| `docs/10-test-and-restdocs.md` | JUnit·Mockito, REST Docs, Swagger 비교 |
+| `docs/11-stats-and-jpa.md` | 통계 SQL(윈도우 함수), 화면 설계, JPA vs MyBatis |
+| `docs/12-crawling-flow.md` | 크롤링 흐름 한눈에 (그림 + 단계별 소스 연결) |
 
 ### 애플리케이션
 - API 호출: `http/crawl.http`

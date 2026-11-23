@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 680" width="1120" height="680" font-family="Pretendard, 'Malgun Gothic', 'Noto Sans CJK KR', sans-serif">
+  <title>프리모아 공고 수집 흐름</title>
+  <desc>우리 프로그램이 프리모아 서버에 HTTP로 요청해 JSON을 받고, 파싱과 변환을 거쳐 Oracle에 저장하는 흐름</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#444" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#0d9488" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1120" height="680" fill="#fcfcfb"/>
+
+  <!-- 영역 제목 -->
+  <text x="190" y="34" font-size="15" font-weight="600" fill="#1b1b1a">우리 프로그램 (Spring Boot)</text>
+  <text x="760" y="34" font-size="15" font-weight="600" fill="#1b1b1a">외부 / 저장소</text>
+  <line x1="660" y1="20" x2="660" y2="664" stroke="#e4e3df" stroke-dasharray="4 4"/>
+
+  <!-- 왼쪽 구간 표시: FROM / 변환 / TO -->
+  <g font-size="12" fill="#5c5b57">
+    <rect x="24" y="240" width="96" height="176" rx="6" fill="#eef7f6" stroke="#cfe7e4"/>
+    <text x="72" y="322" text-anchor="middle" font-weight="600" fill="#0b6b62">FROM</text>
+    <text x="72" y="340" text-anchor="middle">읽기</text>
+
+    <rect x="24" y="428" width="96" height="80" rx="6" fill="#f3f2ee" stroke="#e4e3df"/>
+    <text x="72" y="464" text-anchor="middle" font-weight="600" fill="#1b1b1a">변환</text>
+    <text x="72" y="482" text-anchor="middle">Transform</text>
+
+    <rect x="24" y="520" width="96" height="80" rx="6" fill="#eef7f6" stroke="#cfe7e4"/>
+    <text x="72" y="556" text-anchor="middle" font-weight="600" fill="#0b6b62">TO</text>
+    <text x="72" y="574" text-anchor="middle">쓰기</text>
+  </g>
+
+  <!-- 왼쪽 단계 박스들 -->
+  <g font-size="14">
+    <!-- 1 시작 -->
+    <rect x="140" y="56" width="480" height="64" rx="8" fill="#fff" stroke="#c9c8c2"/>
+    <text x="160" y="82" font-weight="600" fill="#1b1b1a">1. 시작</text>
+    <text x="230" y="82" fill="#1b1b1a">PlainCrawlerMain.main / CrawlService.execute</text>
+    <text x="160" y="104" font-size="12" fill="#8a8984">입력: keyword="java", maxPages=3 (무엇을 달라고 할지)</text>
+
+    <!-- 2 Collector -->
+    <rect x="140" y="148" width="480" height="64" rx="8" fill="#fff" stroke="#c9c8c2"/>
+    <text x="160" y="174" font-weight="600" fill="#1b1b1a">2. 페이지 반복</text>
+    <text x="268" y="174" fill="#1b1b1a">ProjectCollector.collectEachPage</text>
+    <text x="160" y="196" font-size="12" fill="#8a8984">for (page = 1 ~ maxPages) { 3 ~ 6 }  페이지 사이 1초 대기</text>
+
+    <!-- 3 ApiClient -->
+    <rect x="140" y="252" width="480" height="64" rx="8" fill="#fff" stroke="#0d9488" stroke-width="1.5"/>
+    <text x="160" y="278" font-weight="600" fill="#1b1b1a">3. 요청 보내기</text>
+    <text x="268" y="278" fill="#1b1b1a">FreemoaApiClient.fetchList</text>
+    <text x="160" y="300" font-size="12" fill="#8a8984">HTTP POST + 폼 데이터(sS=java&amp;page=1) + 헤더 2개</text>
+
+    <!-- 4 Jackson -->
+    <rect x="140" y="340" width="480" height="64" rx="8" fill="#fff" stroke="#c9c8c2"/>
+    <text x="160" y="366" font-weight="600" fill="#1b1b1a">4. 파싱</text>
+    <text x="220" y="366" fill="#1b1b1a">Jackson objectMapper.readValue</text>
+    <text x="160" y="388" font-size="12" fill="#8a8984">JSON 글자 덩어리 → FreemoaListResponse.Item (값은 아직 전부 String)</text>
+
+    <!-- 5 Converter -->
+    <rect x="140" y="436" width="480" height="64" rx="8" fill="#fff" stroke="#c9c8c2"/>
+    <text x="160" y="462" font-weight="600" fill="#1b1b1a">5. 변환</text>
+    <text x="220" y="462" fill="#1b1b1a">ProjectConverter.convert + SkillParser</text>
+    <text x="160" y="484" font-size="12" fill="#8a8984">"48588"→48588, "0"→null, 날짜 파싱, 기술 쉼표 분리 → Project</text>
+
+    <!-- 6 Writer -->
+    <rect x="140" y="528" width="480" height="64" rx="8" fill="#fff" stroke="#0d9488" stroke-width="1.5"/>
+    <text x="160" y="554" font-weight="600" fill="#1b1b1a">6. 저장</text>
+    <text x="220" y="554" fill="#1b1b1a">ProjectSaveService → ProjectWriter.saveOne</text>
+    <text x="160" y="576" font-size="12" fill="#8a8984">공고 1건 = 트랜잭션 1개, MyBatis로 SQL 실행</text>
+  </g>
+
+  <!-- 왼쪽 세로 화살표 -->
+  <g stroke="#444" stroke-width="1.4" fill="none">
+    <line x1="380" y1="120" x2="380" y2="144" marker-end="url(#arr)"/>
+    <line x1="380" y1="212" x2="380" y2="248" marker-end="url(#arr)"/>
+    <line x1="380" y1="316" x2="380" y2="336" marker-end="url(#arr)"/>
+    <line x1="380" y1="404" x2="380" y2="432" marker-end="url(#arr)"/>
+    <line x1="380" y1="500" x2="380" y2="524" marker-end="url(#arr)"/>
+  </g>
+
+  <!-- 오른쪽: 프리모아 서버 -->
+  <rect x="700" y="196" width="390" height="214" rx="12" fill="#f6f6f3" stroke="#c9c8c2"/>
+  <text x="720" y="224" font-size="15" font-weight="600" fill="#1b1b1a">프리모아 서버 (남의 서버)</text>
+  <rect x="720" y="240" width="350" height="56" rx="8" fill="#fff" stroke="#c9c8c2"/>
+  <text x="738" y="264" font-size="14" fill="#1b1b1a">웹 서버  /m4a/s41a</text>
+  <text x="738" y="284" font-size="12" fill="#8a8984">목록 화면이 쓰는 내부 주소 (공식 API 아님)</text>
+  <rect x="720" y="322" width="350" height="68" rx="8" fill="#fff" stroke="#c9c8c2"/>
+  <text x="738" y="346" font-size="14" fill="#1b1b1a">프리모아 공고 DB</text>
+  <text x="738" y="366" font-size="12" fill="#8a8984">검색어·페이지로 10건 조회해서</text>
+  <text x="738" y="382" font-size="12" fill="#8a8984">JSON으로 돌려줌</text>
+  <line x1="895" y1="296" x2="895" y2="318" stroke="#444" stroke-width="1.2" marker-end="url(#arr)"/>
+
+  <!-- 요청 / 응답 화살표 -->
+  <line x1="620" y1="268" x2="716" y2="268" stroke="#0d9488" stroke-width="1.8" marker-end="url(#arrT)"/>
+  <text x="668" y="258" font-size="11" fill="#0b6b62" text-anchor="middle">요청</text>
+  <path d="M 716 360 L 676 360 L 676 372 L 624 372" fill="none" stroke="#0d9488" stroke-width="1.8" marker-end="url(#arrT)"/>
+  <text x="690" y="352" font-size="11" fill="#0b6b62" text-anchor="middle">JSON 10건</text>
+
+  <!-- 오른쪽: Oracle -->
+  <rect x="700" y="470" width="390" height="190" rx="12" fill="#f6f6f3" stroke="#c9c8c2"/>
+  <text x="720" y="498" font-size="15" font-weight="600" fill="#1b1b1a">우리 Oracle (freemoa 스키마)</text>
+  <g font-size="12" fill="#1b1b1a">
+    <rect x="720" y="512" width="170" height="40" rx="6" fill="#fff" stroke="#c9c8c2"/>
+    <text x="732" y="530">TB_PROJECT</text><text x="732" y="545" fill="#8a8984">MERGE (공고 1행 유지)</text>
+    <rect x="900" y="512" width="170" height="40" rx="6" fill="#fff" stroke="#c9c8c2"/>
+    <text x="912" y="530">TB_SKILL</text><text x="912" y="545" fill="#8a8984">MERGE (기술 마스터)</text>
+    <rect x="720" y="560" width="170" height="40" rx="6" fill="#fff" stroke="#c9c8c2"/>
+    <text x="732" y="578">TB_PROJECT_SKILL</text><text x="732" y="593" fill="#8a8984">DELETE 후 INSERT</text>
+    <rect x="900" y="560" width="170" height="40" rx="6" fill="#fff" stroke="#c9c8c2"/>
+    <text x="912" y="578">TB_PROJECT_SNAPSHOT</text><text x="912" y="593" fill="#8a8984">INSERT (지원자 수 이력)</text>
+    <rect x="720" y="608" width="350" height="40" rx="6" fill="#fff" stroke="#c9c8c2"/>
+    <text x="732" y="626">TB_CRAWL_RUN</text><text x="732" y="641" fill="#8a8984">수집 1회 이력 (시작, 진행 건수, 결과)</text>
+  </g>
+  <line x1="620" y1="560" x2="716" y2="560" stroke="#0d9488" stroke-width="1.8" marker-end="url(#arrT)"/>
+  <text x="668" y="550" font-size="11" fill="#0b6b62" text-anchor="middle">SQL</text>
+</svg>

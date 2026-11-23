@@ -1,5 +1,7 @@
 # 02. 순수 Java 수집기 (Spring 없이)
 
+> 전체 흐름(요청 → JSON → 파싱 → 변환 → 저장)을 그림으로 먼저 보려면 [12-crawling-flow.md](12-crawling-flow.md)
+
 ## 왜 Spring 없이 먼저 짜나
 Spring을 쓰면 `@Service`, `@Autowired` 몇 줄로 객체가 알아서 연결된다.
 편하지만 "무엇을 대신해주는지" 모르고 쓰게 된다.
