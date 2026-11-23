@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1040" width="1100" height="1040" font-family="Pretendard, 'Malgun Gothic', 'Noto Sans CJK KR', sans-serif">
+  <title>증분 배치 순서도</title>
+  <desc>서버 기동부터 스케줄러가 증분 수집을 실행하고, 새 공고가 끊기면 멈추는 순서</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#444" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1100" height="1040" fill="#fcfcfb"/>
+
+  <!-- 오른쪽 소스 위치 열 제목 -->
+  <text x="700" y="34" font-size="14" font-weight="600" fill="#1b1b1a">소스 위치</text>
+  <line x1="680" y1="20" x2="680" y2="1020" stroke="#e4e3df" stroke-dasharray="4 4"/>
+
+  <g font-size="12" fill="#1b1b1a">
+    <!-- A 서버 기동 -->
+    <rect x="200" y="20" width="300" height="44" rx="22" fill="#1b1b1a"/>
+    <text x="350" y="47" text-anchor="middle" fill="#fff" font-size="13" font-weight="600">서버 기동 (Spring Boot)</text>
+    <line x1="350" y1="64" x2="350" y2="86" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+    <!-- B 빈 등록 -->
+    <rect x="160" y="88" width="380" height="64" rx="6" fill="#f5f3ff" stroke="#c4b5fd"/>
+    <text x="350" y="112" text-anchor="middle" font-weight="600">enabled: true 이면 스케줄러 클래스 생성</text>
+    <text x="350" y="134" text-anchor="middle" font-size="11" fill="#5c5b57">@EnableScheduling 으로 scheduling-1 스레드가 시계를 봄</text>
+    <text x="700" y="112" font-size="11">IncrementalCrawlScheduler (클래스 위)</text>
+    <text x="700" y="128" font-size="11" fill="#5c5b57">@EnableScheduling, @ConditionalOnProperty</text>
+    <text x="700" y="144" font-size="11" fill="#5c5b57">application.yml crawler.incremental.enabled</text>
+    <line x1="350" y1="152" x2="350" y2="174" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+    <!-- C cron 시각 -->
+    <rect x="160" y="176" width="380" height="56" rx="6" fill="#f5f3ff" stroke="#c4b5fd"/>
+    <text x="350" y="200" text-anchor="middle" font-weight="600">cron 시각이 됨 (평일 9~18시 정각)</text>
+    <text x="350" y="220" text-anchor="middle" font-size="11" fill="#5c5b57">scheduling-1 스레드가 run() 호출</text>
+    <text x="700" y="200" font-size="11">@Scheduled(cron = "${crawler.incremental.cron}")</text>
+    <text x="700" y="216" font-size="11" fill="#5c5b57">IncrementalCrawlScheduler.run()</text>
+    <line x1="350" y1="232" x2="350" y2="254" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+    <!-- D start -->
+    <rect x="160" y="256" width="380" height="56" rx="6" fill="#ffffff" stroke="#9ca3af"/>
+    <text x="350" y="280" text-anchor="middle" font-weight="600">crawlIncremental() → start(INCREMENTAL)</text>
+    <text x="350" y="300" text-anchor="middle" font-size="11" fill="#5c5b57">이력 INSERT RUNNING, runId 받기</text>
+    <text x="700" y="280" font-size="11">CrawlService.crawlIncremental()  78줄</text>
+    <text x="700" y="296" font-size="11" fill="#5c5b57">CrawlRunService.start()  REQUIRES_NEW</text>
+    <line x1="350" y1="312" x2="350" y2="334" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+    <!-- 409 분기 -->
+    <path d="M540 284 L 612 284 L 612 314" fill="none" stroke="#b91c1c" stroke-width="1.3" stroke-dasharray="5 3"/>
+    <rect x="556" y="316" width="112" height="58" rx="6" fill="#fef2f2" stroke="#fca5a5"/>
+    <text x="612" y="336" text-anchor="middle" font-size="11" fill="#b91c1c">다른 수집 중이면</text>
+    <text x="612" y="352" text-anchor="middle" font-size="11" fill="#b91c1c">"이번 회차 건너뜀"</text>
+    <text x="612" y="368" text-anchor="middle" font-size="11" fill="#b91c1c">로그 남기고 끝</text>
+
+    <!-- E execute 시작 -->
+    <rect x="160" y="336" width="380" height="56" rx="6" fill="#eef7f6" stroke="#0d9488"/>
+    <text x="350" y="360" text-anchor="middle" font-weight="600">execute(runId, "", 10, 2)</text>
+    <text x="350" y="380" text-anchor="middle" font-size="11" fill="#5c5b57">최대 10페이지, 새 공고 없는 페이지 2번 연속이면 멈춤</text>
+    <text x="700" y="360" font-size="11">CrawlService.execute()  94줄</text>
+    <text x="700" y="376" font-size="11" fill="#5c5b57">yml max-pages: 10, stop-after-idle-pages: 2</text>
+    <line x1="350" y1="392" x2="350" y2="414" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+    <!-- 루프 영역 -->
+    <rect x="110" y="406" width="560" height="482" rx="10" fill="none" stroke="#0d9488" stroke-dasharray="6 4"/>
+    <text x="122" y="426" font-size="11" fill="#0f766e" font-weight="600">페이지마다 반복 (전체/수동 수집도 같은 루프)</text>
+
+    <!-- F 요청 -->
+    <rect x="160" y="436" width="380" height="44" rx="6" fill="#ffffff" stroke="#9ca3af"/>
+    <text x="350" y="463" text-anchor="middle">프리모아에 N페이지 요청 → 10건 받기, 1건씩 변환</text>
+    <text x="700" y="456" font-size="11">ProjectCollector.collectEachPage()  75줄</text>
+    <text x="700" y="472" font-size="11" fill="#5c5b57">fetchWithRetry (타임아웃이면 2초, 4초 뒤 재시도)</text>
+    <line x1="350" y1="480" x2="350" y2="500" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+    <!-- G 저장 -->
+    <rect x="160" y="502" width="380" height="44" rx="6" fill="#ffffff" stroke="#9ca3af"/>
+    <text x="350" y="529" text-anchor="middle">저장: saveAll → saveOne x10 (1건 = 커밋 1번)</text>
+    <text x="700" y="522" font-size="11">execute() 안 람다 (page, projects) -&gt; {...}  106줄</text>
+    <text x="700" y="538" font-size="11" fill="#5c5b57">ProjectSaveService → ProjectWriter.saveOne</text>
+    <line x1="350" y1="546" x2="350" y2="566" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+    <!-- H 진행 -->
+    <rect x="160" y="568" width="380" height="40" rx="6" fill="#ffffff" stroke="#9ca3af"/>
+    <text x="350" y="593" text-anchor="middle">progress()  이력에 건수 갱신</text>
+    <text x="700" y="592" font-size="11">crawlRunService.progress()  112줄</text>
+    <line x1="350" y1="608" x2="350" y2="628" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+    <!-- I 판단1 -->
+    <polygon points="350,630 500,672 350,714 200,672" fill="#fffbeb" stroke="#e0b44c"/>
+    <text x="350" y="668" text-anchor="middle" font-weight="600">이 페이지에</text>
+    <text x="350" y="686" text-anchor="middle" font-weight="600">새 공고가 있었나?</text>
+    <text x="700" y="668" font-size="11">totals.idlePages = saved.inserted() &gt; 0</text>
+    <text x="700" y="684" font-size="11">                  ? 0 : idlePages + 1;   119줄</text>
+    <text x="510" y="664" font-size="11" fill="#0f766e">있음: 연속 0으로</text>
+    <text x="510" y="682" font-size="11" fill="#b45309">없음: 연속 +1</text>
+    
+    <line x1="350" y1="714" x2="350" y2="734" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+    <!-- J 판단2 -->
+    <polygon points="350,736 510,780 350,824 190,780" fill="#fffbeb" stroke="#e0b44c"/>
+    <text x="350" y="776" text-anchor="middle" font-weight="600">연속 2번째인가?</text>
+    <text x="350" y="794" text-anchor="middle" font-size="11" fill="#5c5b57">(전체/수동은 기준이 0이라 항상 아니오)</text>
+    <text x="700" y="772" font-size="11">if (stopAfterIdlePages &gt; 0</text>
+    <text x="700" y="788" font-size="11">    &amp;&amp; idlePages &gt;= stopAfterIdlePages)</text>
+    <text x="700" y="804" font-size="11">    return false;   120~122줄</text>
+
+    <!-- 예 → 멈춤 -->
+    <line x1="510" y1="780" x2="600" y2="780" stroke="#444" stroke-width="1.4"/>
+    <line x1="600" y1="780" x2="600" y2="932" stroke="#444" stroke-width="1.4"/>
+    <text x="522" y="772" font-size="11" fill="#b91c1c">예: 멈춤</text>
+
+    <!-- 아니오 → 판단3 -->
+    <line x1="350" y1="824" x2="350" y2="840" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="360" y="836" font-size="11" fill="#5c5b57">아니오</text>
+    <rect x="200" y="842" width="300" height="36" rx="6" fill="#fffbeb" stroke="#e0b44c"/>
+    <text x="350" y="865" text-anchor="middle" font-size="12">마지막 페이지 또는 10페이지째?</text>
+    <text x="700" y="862" font-size="11">collectEachPage 안 isLastPage(), maxPages</text>
+
+    <!-- 아니오 → 1초 쉬고 위로 -->
+    <path d="M200 860 L 140 860 L 140 458 L 156 458" fill="none" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="128" y="640" font-size="11" fill="#5c5b57" text-anchor="end" transform="rotate(-90 128 640)">아니오: 1초 쉬고 다음 페이지</text>
+
+    <!-- 예 → 끝 -->
+    <path d="M500 860 L 560 860 L 560 932" fill="none" stroke="#444" stroke-width="1.4"/>
+    <text x="508" y="852" font-size="11" fill="#b91c1c">예</text>
+    <path d="M600 932 L 600 940 L 352 940 L 352 950" fill="none" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <line x1="560" y1="932" x2="560" y2="940" stroke="#444" stroke-width="1.4"/>
+
+    <!-- K finish -->
+    <rect x="160" y="952" width="380" height="56" rx="6" fill="#eef7f6" stroke="#0d9488"/>
+    <text x="350" y="976" text-anchor="middle" font-weight="600">finish(SUCCESS / PARTIAL / FAIL)</text>
+    <text x="350" y="996" text-anchor="middle" font-size="11" fill="#5c5b57">로그 "[배치] 증분 수집 완료 신규 N건, 갱신 N건" → 다음 정각까지 대기</text>
+    <text x="700" y="976" font-size="11">crawlRunService.finish()  128줄</text>
+    <text x="700" y="992" font-size="11" fill="#5c5b57">IncrementalCrawlScheduler.run() 로그</text>
+  </g>
+</svg>

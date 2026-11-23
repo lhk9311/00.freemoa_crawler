@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760" font-family="Pretendard, 'Malgun Gothic', 'Noto Sans CJK KR', sans-serif">
+  <title>전체 수집 순서 (백그라운드 + 폴링)</title>
+  <desc>화면, 요청 스레드, 수집 스레드, DB 사이에서 전체 수집이 접수되고 진행되고 끝나는 순서</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#444" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#b45309" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="760" fill="#fcfcfb"/>
+
+  <!-- 열 머리 -->
+  <g font-size="14" font-weight="700" text-anchor="middle">
+    <rect x="40"  y="20" width="220" height="50" rx="6" fill="#f4f4f2" stroke="#d6d5d0"/>
+    <text x="150" y="42" fill="#1b1b1a">넥사크로 화면</text>
+    <text x="150" y="60" font-size="11" font-weight="400" fill="#5c5b57">frmProjectList.js</text>
+
+    <rect x="340" y="20" width="240" height="50" rx="6" fill="#ecfdf5" stroke="#a7d8cf"/>
+    <text x="460" y="42" fill="#0f5f58">요청 스레드</text>
+    <text x="460" y="60" font-size="11" font-weight="400" fill="#0f766e">http-nio-8080-exec-N</text>
+
+    <rect x="660" y="20" width="240" height="50" rx="6" fill="#fff7ed" stroke="#f0c48a"/>
+    <text x="780" y="42" fill="#7c2d12">수집 스레드</text>
+    <text x="780" y="60" font-size="11" font-weight="400" fill="#b45309">crawl-1 (1개뿐)</text>
+
+    <rect x="980" y="20" width="180" height="50" rx="6" fill="#f4f4f2" stroke="#d6d5d0"/>
+    <text x="1070" y="42" fill="#1b1b1a">Oracle</text>
+    <text x="1070" y="60" font-size="11" font-weight="400" fill="#5c5b57">TB_CRAWL_RUN</text>
+  </g>
+
+  <!-- 생명선 -->
+  <g stroke="#d6d5d0" stroke-dasharray="4 4">
+    <line x1="150" y1="70" x2="150" y2="740"/>
+    <line x1="460" y1="70" x2="460" y2="740"/>
+    <line x1="780" y1="70" x2="780" y2="740"/>
+    <line x1="1070" y1="70" x2="1070" y2="740"/>
+  </g>
+  <!-- crawl-1 활성 구간 -->
+  <rect x="772" y="268" width="16" height="352" fill="#fde7c7" stroke="#f0c48a"/>
+
+  <g font-size="12" fill="#1b1b1a">
+    <!-- 1 -->
+    <circle cx="26" cy="104" r="11" fill="#1b1b1a"/><text x="26" y="108" fill="#fff" text-anchor="middle" font-size="11">1</text>
+    <line x1="150" y1="110" x2="456" y2="110" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="160" y="100">[전체 수집] 클릭 → transaction("crawlFull", /nx/crawl/full)</text>
+    <text x="160" y="126" font-size="11" fill="#5c5b57">btn_crawlFull_onclick (104줄), 버튼 3개 끔</text>
+
+    <!-- 2 -->
+    <circle cx="26" cy="158" r="11" fill="#1b1b1a"/><text x="26" y="162" fill="#fff" text-anchor="middle" font-size="11">2</text>
+    <line x1="460" y1="164" x2="1066" y2="164" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="470" y="154">submitFull() → crawlRunService.start(FULL)</text>
+    <text x="840" y="154">INSERT ... STATUS='RUNNING'  → runId=7</text>
+    <text x="470" y="182" font-size="11" fill="#b91c1c">이미 RUNNING이 있으면 유니크 인덱스 위반 → 409 "이미 수집 중", 여기서 끝</text>
+
+    <!-- 3 -->
+    <circle cx="26" cy="224" r="11" fill="#1b1b1a"/><text x="26" y="228" fill="#fff" text-anchor="middle" font-size="11">3</text>
+    <path d="M460 232 L 780 232 L 780 264" fill="none" stroke="#b45309" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arrO)"/>
+    <text x="470" y="220">crawlExecutor.execute(() -&gt; runSafely(7, ...))</text>
+    <text x="470" y="252" font-size="11" fill="#b45309">일을 넘기기만 하고 안 기다림 (비동기)</text>
+
+    <!-- 4 -->
+    <circle cx="26" cy="300" r="11" fill="#1b1b1a"/><text x="26" y="304" fill="#fff" text-anchor="middle" font-size="11">4</text>
+    <line x1="456" y1="306" x2="154" y2="306" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="170" y="296">응답 ds_run (runId=7, RUNNING)  1초도 안 걸림</text>
+    <text x="170" y="324" font-size="11" fill="#5c5b57">fnCallback "crawlFull" → fnStartPolling(7) → setTimer 3초</text>
+
+    <!-- 5 수집 루프 -->
+    <circle cx="26" cy="360" r="11" fill="#b45309"/><text x="26" y="364" fill="#fff" text-anchor="middle" font-size="11">5</text>
+    <rect x="800" y="296" width="170" height="104" rx="6" fill="#fff7ed" stroke="#f0c48a"/>
+    <text x="810" y="316" font-size="12" font-weight="600" fill="#7c2d12">execute(7, kw, 1000, 0)</text>
+    <text x="810" y="336" font-size="11" fill="#3d3d3a">페이지 1, 2, 3 ... 437</text>
+    <text x="810" y="354" font-size="11" fill="#3d3d3a">수집 → 저장(1건씩 커밋)</text>
+    <text x="810" y="372" font-size="11" fill="#3d3d3a">→ progress() 건수 갱신</text>
+    <text x="810" y="390" font-size="11" fill="#5c5b57">7~10분</text>
+    <line x1="970" y1="372" x2="1066" y2="372" stroke="#b45309" stroke-width="1.4" marker-end="url(#arrO)"/>
+    <text x="978" y="364" font-size="11" fill="#7c2d12">UPDATE 건수</text>
+
+    <!-- 6 폴링 -->
+    <circle cx="26" cy="438" r="11" fill="#1b1b1a"/><text x="26" y="442" fill="#fff" text-anchor="middle" font-size="11">6</text>
+    <line x1="150" y1="444" x2="456" y2="444" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="160" y="434">3초마다 Form_ontimer → /nx/crawl/run (runId=7)</text>
+    <line x1="460" y1="470" x2="1066" y2="470" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="470" y="462">crawlRunService.find(7)</text>
+    <text x="900" y="462">SELECT 건수, 상태</text>
+    <line x1="456" y1="496" x2="154" y2="496" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="170" y="490">"RUNNING, 120페이지, 1,200건"</text>
+    <text x="170" y="516" font-size="11" fill="#5c5b57">sta_runStatus에 표시. RUNNING이면 다음 3초 기다림</text>
+    <text x="170" y="534" font-size="11" fill="#5c5b57">(이 왕복이 5번과 동시에 계속 반복된다)</text>
+
+    <!-- 7 finish -->
+    <circle cx="26" cy="590" r="11" fill="#b45309"/><text x="26" y="594" fill="#fff" text-anchor="middle" font-size="11">7</text>
+    <line x1="788" y1="596" x2="1066" y2="596" stroke="#b45309" stroke-width="1.4" marker-end="url(#arrO)"/>
+    <text x="800" y="586">finish(SUCCESS)</text>
+    <text x="900" y="614" font-size="11" fill="#7c2d12">STATUS='SUCCESS'</text>
+    <text x="800" y="636" font-size="11" fill="#5c5b57">crawl-1 스레드 쉼, 다음 접수 대기</text>
+
+    <!-- 8 -->
+    <circle cx="26" cy="672" r="11" fill="#1b1b1a"/><text x="26" y="676" fill="#fff" text-anchor="middle" font-size="11">8</text>
+    <line x1="456" y1="678" x2="154" y2="678" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="170" y="668">다음 폴링 응답: "SUCCESS"</text>
+    <text x="170" y="698" font-size="11" fill="#5c5b57">RUNNING이 아니니까 fnStopPolling() → 타이머 끄기, 버튼 켜기,</text>
+    <text x="170" y="714" font-size="11" fill="#5c5b57">alert "전체 수집 끝", 목록 새로고침</text>
+  </g>
+</svg>

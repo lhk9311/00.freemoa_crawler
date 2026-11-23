@@ -1,5 +1,79 @@
 # 07. 전체 수집 + 증분 배치
 
+## 0. 한눈에 보기 (그림 + 소스 위치)
+
+이 절은 아래 1~5절 내용을 그림과 소스 위치로 다시 정리한 것이다. 처음 볼 때는 이 절만 따라가도 된다.
+
+### 0-1. 수집 3종류는 시작점만 다르고, 같은 루프로 모인다
+
+![수집 3종류의 시작점](images/crawl-entry-points.png)
+
+(그림 원본: [images/crawl-entry-points.svg](images/crawl-entry-points.svg))
+
+| 종류 | 누가 시작 | 처음 들어오는 곳 | execute()에 넘기는 값 | 스레드 |
+|---|---|---|---|---|
+| 수동 | 넥사크로 [수집 실행] | [CrawlService.crawl()](../src/main/java/com/lhk/freemoa/crawler/CrawlService.java#L62) | maxPages 1~30, 멈춤 0 | `http-nio-8080-exec-N` (끝날 때까지 기다림) |
+| 전체 | 넥사크로 [전체 수집] | [CrawlJobLauncher.submitFull()](../src/main/java/com/lhk/freemoa/crawler/CrawlJobLauncher.java) | maxPages 1000, 멈춤 0 | 접수는 `http-nio`, 수집은 `crawl-1` |
+| 증분 | 스프링 스케줄러 (cron) | [IncrementalCrawlScheduler.run()](../src/main/java/com/lhk/freemoa/crawler/IncrementalCrawlScheduler.java) → [CrawlService.crawlIncremental()](../src/main/java/com/lhk/freemoa/crawler/CrawlService.java#L78) | maxPages 10, 멈춤 2 | `scheduling-1` |
+
+세 종류 모두 [CrawlService.execute()](../src/main/java/com/lhk/freemoa/crawler/CrawlService.java#L94)를 부른다.
+다른 점은 **누가, 어느 스레드에서 부르나**와 **넘기는 숫자 2개(maxPages, 멈춤 기준)**뿐이다.
+
+### 0-2. 전체 수집: 접수와 수집을 다른 스레드로 나눈다
+
+![전체 수집 순서](images/crawl-full-sequence.png)
+
+(그림 원본: [images/crawl-full-sequence.svg](images/crawl-full-sequence.svg))
+
+| 순서 | 무엇을 | 소스 |
+|---|---|---|
+| 1 | [전체 수집] 클릭 → `/nx/crawl/full` 호출 | [frmProjectList.js](../nexacro/frmProjectList.js) `btn_crawlFull_onclick` (104줄) |
+| 2 | 이력에 RUNNING 기록, runId 받기. 이미 RUNNING이면 409 | `CrawlJobLauncher.submitFull()` → [CrawlRunService.start()](../src/main/java/com/lhk/freemoa/crawler/run/CrawlRunService.java#L39) |
+| 3 | 수집을 `crawl-1` 스레드에 넘김. **끝날 때까지 안 기다림** | `crawlExecutor.execute(() -> runSafely(...))` (CrawlJobLauncher 62줄) |
+| 4 | runId를 즉시 응답, 화면은 3초 타이머 시작 | `fnCallback` case `"crawlFull"` → `fnStartPolling` (126줄) |
+| 5 | `crawl-1`이 페이지마다 수집, 저장, 건수 갱신 | [CrawlService.execute()](../src/main/java/com/lhk/freemoa/crawler/CrawlService.java#L94), `progress()` (112줄) |
+| 6 | 화면이 3초마다 진행 상황 조회 | `Form_ontimer` (116줄) → `/nx/crawl/run` → `CrawlRunService.find()` |
+| 7 | 끝나면 이력에 SUCCESS/PARTIAL/FAIL | `crawlRunService.finish()` (CrawlService 128줄) |
+| 8 | 화면이 RUNNING이 아닌 걸 보고 타이머 끔 | `fnCallback` case `"runStatus"` → `fnStopPolling` (133줄) |
+
+스레드 풀 설정은 [CrawlAsyncConfig](../src/main/java/com/lhk/freemoa/crawler/CrawlAsyncConfig.java): 스레드 1개, 대기열 0, 이름 `crawl-`.
+
+**왜 이렇게 하나:** 전체 수집은 7~10분 걸린다. 화면이 그 응답을 기다리면 화면 쪽 요청이 타임아웃 난다.
+그래서 식당 주문처럼 "주문번호(runId)만 바로 주고, 요리(수집)는 주방(crawl-1)에서, 손님(화면)은 3초마다 다 됐는지 물어보는" 구조로 나눴다.
+
+### 0-3. 증분 배치: 스케줄러가 정해진 시각에 부르고, 새 공고가 끊기면 멈춘다
+
+![증분 배치 순서도](images/crawl-incremental-flow.png)
+
+(그림 원본: [images/crawl-incremental-flow.svg](images/crawl-incremental-flow.svg))
+
+| 단계 | 무엇을 | 소스 |
+|---|---|---|
+| 서버 기동 | `enabled: true`면 스케줄러 클래스가 만들어지고, `scheduling-1` 스레드가 시계를 본다 | [IncrementalCrawlScheduler](../src/main/java/com/lhk/freemoa/crawler/IncrementalCrawlScheduler.java) `@EnableScheduling`, `@ConditionalOnProperty` |
+| cron 시각 | 평일 9~18시 정각에 `run()` 호출 | `@Scheduled(cron = "${crawler.incremental.cron}")`, [application.yml](../src/main/resources/application.yml) |
+| 시작 | 이력에 RUNNING. 다른 수집 중이면 "이번 회차 건너뜀" | [CrawlService.crawlIncremental()](../src/main/java/com/lhk/freemoa/crawler/CrawlService.java#L78) |
+| 루프 | 페이지 요청 → 저장 → 건수 갱신 (전체 수집과 같은 루프) | [CrawlService.execute()](../src/main/java/com/lhk/freemoa/crawler/CrawlService.java#L94) 안의 람다 (106줄) |
+| 멈춤 판단 | 이 페이지에 새 공고가 없으면 연속 횟수 +1, 2번 연속이면 `return false` | CrawlService 119~122줄 |
+| 끝 | 이력에 상태 기록, `[배치] 증분 수집 완료` 로그 | `crawlRunService.finish()` (128줄) |
+
+전체 수집과 다르게 따로 스레드에 넘기지 않는다. 이미 `scheduling-1`이라는 별도 스레드에서 돌고 있고, 보통 1~2페이지라 몇 초면 끝나기 때문이다.
+
+### 0-4. 로그로 확인하기
+
+IntelliJ 콘솔의 대괄호 안 이름이 스레드다. 어떤 수집이 어디서 돌고 있는지 이걸로 구분한다.
+
+```
+[http-nio-8080-exec-3] ... [run=7] 전체 수집 접수 (keyword='')      ← 요청 스레드: 접수만
+[crawl-1]              ... [run=7] 수집 시작: keyword='', maxPages=1000
+[crawl-1]              ... [run=7] 50페이지 진행 중 (누적 500건)
+[scheduling-1]         ... [배치] 다른 수집이 진행 중이라 이번 회차는 건너뜀   ← 정각에 배치가 왔지만 409
+[crawl-1]              ... [run=7] 수집 종료: SUCCESS (437페이지, ...ms)
+[scheduling-1]         ... [run=8] 새 공고 없는 페이지 2번 연속 -> 2페이지에서 멈춤
+[scheduling-1]         ... [배치] 증분 수집 완료 run=8 신규 3건, 갱신 17건
+```
+
+---
+
 ## 목표
 - 처음 한 번은 **전체**를 받는다 (400페이지 이상, 수 분).
 - 그 뒤로는 **새 공고만** 주기적으로 받는다 (평소 1~2페이지).

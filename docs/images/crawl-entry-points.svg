@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" font-family="Pretendard, 'Malgun Gothic', 'Noto Sans CJK KR', sans-serif">
+  <title>수집 3종류의 시작점과 공통 루프</title>
+  <desc>수동, 전체, 증분 수집이 각각 다른 곳에서 시작해서 CrawlService.execute() 하나로 모이는 구조</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#444" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#0d9488" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="640" fill="#fcfcfb"/>
+
+  <!-- 열 제목 -->
+  <g font-size="14" font-weight="600" fill="#1b1b1a">
+    <text x="30" y="36">수집 종류</text>
+    <text x="230" y="36">누가 시작하나</text>
+    <text x="500" y="36">처음 들어오는 메서드</text>
+    <text x="870" y="36">공통 루프 (여기로 다 모인다)</text>
+  </g>
+  <line x1="20" y1="50" x2="1180" y2="50" stroke="#e4e3df"/>
+
+  <!-- ===== 레인 1: 수동 ===== -->
+  <rect x="20" y="66" width="820" height="140" rx="8" fill="#ffffff" stroke="#e4e3df"/>
+  <text x="34" y="98" font-size="16" font-weight="700" fill="#1b1b1a">수동</text>
+  <text x="34" y="118" font-size="12" fill="#5c5b57">MANUAL</text>
+  <text x="34" y="150" font-size="11" fill="#5c5b57">스레드</text>
+  <text x="34" y="166" font-size="11" fill="#0f766e">http-nio-8080-exec-N</text>
+  <text x="34" y="184" font-size="11" fill="#5c5b57">끝날 때까지 기다림</text>
+
+  <rect x="220" y="86" width="240" height="100" rx="6" fill="#f4f4f2" stroke="#d6d5d0"/>
+  <text x="234" y="112" font-size="13" font-weight="600" fill="#1b1b1a">사람: 넥사크로 [수집 실행]</text>
+  <text x="234" y="134" font-size="12" fill="#3d3d3a">/nx/crawl</text>
+  <text x="234" y="154" font-size="12" fill="#3d3d3a">또는 POST /api/crawl</text>
+  <text x="234" y="174" font-size="11" fill="#5c5b57">페이지 수 지정 (1~30)</text>
+
+  <rect x="490" y="86" width="330" height="100" rx="6" fill="#ffffff" stroke="#9ca3af"/>
+  <text x="504" y="112" font-size="13" font-weight="600" fill="#1b1b1a">CrawlService.crawl()</text>
+  <text x="504" y="134" font-size="12" fill="#3d3d3a">1) start(MANUAL)  이력 RUNNING</text>
+  <text x="504" y="154" font-size="12" fill="#3d3d3a">2) execute(runId, kw, maxPages, 0)</text>
+  <text x="504" y="174" font-size="11" fill="#5c5b57">CrawlService.java 62줄</text>
+
+  <line x1="460" y1="136" x2="486" y2="136" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- ===== 레인 2: 전체 ===== -->
+  <rect x="20" y="222" width="820" height="180" rx="8" fill="#ffffff" stroke="#e4e3df"/>
+  <text x="34" y="254" font-size="16" font-weight="700" fill="#1b1b1a">전체</text>
+  <text x="34" y="274" font-size="12" fill="#5c5b57">FULL</text>
+  <text x="34" y="306" font-size="11" fill="#5c5b57">스레드</text>
+  <text x="34" y="322" font-size="11" fill="#0f766e">접수: http-nio-...</text>
+  <text x="34" y="338" font-size="11" fill="#b45309">수집: crawl-1</text>
+  <text x="34" y="356" font-size="11" fill="#5c5b57">runId만 받고 바로 응답</text>
+
+  <rect x="220" y="242" width="240" height="100" rx="6" fill="#f4f4f2" stroke="#d6d5d0"/>
+  <text x="234" y="268" font-size="13" font-weight="600" fill="#1b1b1a">사람: 넥사크로 [전체 수집]</text>
+  <text x="234" y="290" font-size="12" fill="#3d3d3a">/nx/crawl/full</text>
+  <text x="234" y="310" font-size="12" fill="#3d3d3a">또는 POST /api/crawl/all</text>
+  <text x="234" y="330" font-size="11" fill="#5c5b57">이후 3초마다 /nx/crawl/run</text>
+
+  <rect x="490" y="242" width="330" height="100" rx="6" fill="#ffffff" stroke="#9ca3af"/>
+  <text x="504" y="268" font-size="13" font-weight="600" fill="#1b1b1a">CrawlJobLauncher.submitFull()</text>
+  <text x="504" y="290" font-size="12" fill="#3d3d3a">1) start(FULL)  이력 RUNNING, runId</text>
+  <text x="504" y="310" font-size="12" fill="#3d3d3a">2) crawlExecutor.execute(람다)  넘기기만</text>
+  <text x="504" y="330" font-size="12" fill="#3d3d3a">3) return runId  (202, 즉시)</text>
+
+  <line x1="460" y1="292" x2="486" y2="292" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <rect x="490" y="352" width="330" height="40" rx="6" fill="#fff7ed" stroke="#f0c48a"/>
+  <text x="504" y="377" font-size="12" fill="#7c2d12">crawl-1 스레드: runSafely() → execute(runId, kw, 1000, 0)</text>
+  <path d="M520 342 L520 352" stroke="#b45309" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+
+  <!-- ===== 레인 3: 증분 ===== -->
+  <rect x="20" y="418" width="820" height="160" rx="8" fill="#ffffff" stroke="#e4e3df"/>
+  <text x="34" y="450" font-size="16" font-weight="700" fill="#1b1b1a">증분</text>
+  <text x="34" y="470" font-size="12" fill="#5c5b57">INCREMENTAL</text>
+  <text x="34" y="502" font-size="11" fill="#5c5b57">스레드</text>
+  <text x="34" y="518" font-size="11" fill="#7c3aed">scheduling-1</text>
+  <text x="34" y="536" font-size="11" fill="#5c5b57">(버튼이면 http-nio)</text>
+
+  <rect x="220" y="438" width="240" height="120" rx="6" fill="#f4f4f2" stroke="#d6d5d0"/>
+  <text x="234" y="464" font-size="13" font-weight="600" fill="#1b1b1a">스프링 스케줄러</text>
+  <text x="234" y="486" font-size="12" fill="#3d3d3a">cron "0 0 9-18 * * MON-FRI"</text>
+  <text x="234" y="506" font-size="12" fill="#3d3d3a">평일 9~18시 매시 정각</text>
+  <text x="234" y="532" font-size="11" fill="#5c5b57">또는 넥사크로 [새 공고만]</text>
+  <text x="234" y="548" font-size="11" fill="#5c5b57">/nx/crawl/incremental</text>
+
+  <rect x="490" y="438" width="330" height="120" rx="6" fill="#ffffff" stroke="#9ca3af"/>
+  <text x="504" y="464" font-size="13" font-weight="600" fill="#1b1b1a">IncrementalCrawlScheduler.run()</text>
+  <text x="504" y="484" font-size="12" fill="#3d3d3a">→ CrawlService.crawlIncremental()</text>
+  <text x="504" y="506" font-size="12" fill="#3d3d3a">1) start(INCREMENTAL)  이력 RUNNING</text>
+  <text x="504" y="526" font-size="12" fill="#3d3d3a">2) execute(runId, "", 10, 2)</text>
+  <text x="504" y="546" font-size="11" fill="#5c5b57">CrawlService.java 78줄</text>
+
+  <line x1="460" y1="498" x2="486" y2="498" stroke="#444" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- ===== 모이는 화살표 ===== -->
+  <path d="M820 150 C 850 150, 850 200, 868 220" fill="none" stroke="#0d9488" stroke-width="1.8" marker-end="url(#arrT)"/>
+  <path d="M820 372 C 845 372, 850 330, 868 320" fill="none" stroke="#0d9488" stroke-width="1.8" marker-end="url(#arrT)"/>
+  <path d="M820 520 C 850 520, 850 450, 868 430" fill="none" stroke="#0d9488" stroke-width="1.8" marker-end="url(#arrT)"/>
+
+  <!-- ===== 공통 루프 ===== -->
+  <rect x="870" y="66" width="310" height="512" rx="8" fill="#eef7f6" stroke="#0d9488" stroke-width="1.4"/>
+  <text x="886" y="94" font-size="14" font-weight="700" fill="#0f5f58">CrawlService.execute()</text>
+  <text x="886" y="112" font-size="11" fill="#3d3d3a">(runId, keyword, maxPages, stopAfterIdlePages)</text>
+  <text x="886" y="130" font-size="11" fill="#5c5b57">CrawlService.java 94줄</text>
+
+  <g font-size="12" fill="#1b1b1a">
+    <rect x="886" y="144" width="278" height="92" rx="4" fill="#ffffff" stroke="#cfe7e4"/>
+    <text x="896" y="164" font-weight="600">종류별로 넘기는 값</text>
+    <text x="896" y="184">수동    maxPages 1~30    멈춤 0</text>
+    <text x="896" y="204">전체    maxPages 1000    멈춤 0</text>
+    <text x="896" y="224">증분    maxPages 10      멈춤 2</text>
+  </g>
+
+  <g font-size="12" fill="#1b1b1a">
+    <text x="886" y="264" font-weight="600">페이지마다 반복</text>
+    <text x="896" y="288">① 프리모아에 1페이지 요청 (10건)</text>
+    <text x="896" y="310">② 1건씩 변환</text>
+    <text x="896" y="332">③ saveAll → saveOne x10</text>
+    <text x="912" y="350" font-size="11" fill="#5c5b57">공고 1건 = 커밋 1번</text>
+    <text x="896" y="374">④ progress()  이력에 건수 갱신</text>
+    <text x="896" y="396">⑤ 멈출지 판단</text>
+    <text x="912" y="414" font-size="11" fill="#5c5b57">마지막 페이지? maxPages 도달?</text>
+    <text x="912" y="430" font-size="11" fill="#5c5b57">새 공고 0건 페이지가 2번 연속? (증분만)</text>
+    <text x="896" y="454">⑥ 1초 쉬고 다음 페이지</text>
+    <text x="886" y="490" font-weight="600">끝나면</text>
+    <text x="896" y="512">finish()  SUCCESS / PARTIAL / FAIL</text>
+  </g>
+
+  <!-- ===== DB 띠 ===== -->
+  <rect x="20" y="594" width="1160" height="34" rx="6" fill="#f4f4f2" stroke="#d6d5d0"/>
+  <text x="34" y="616" font-size="12" fill="#3d3d3a">TB_CRAWL_RUN (수집 이력):  start() = INSERT RUNNING   ·   progress() = 건수 UPDATE   ·   finish() = 상태 UPDATE   ·   RUNNING은 동시에 1개만 (유니크 인덱스, 겹치면 409)</text>
+</svg>
