@@ -229,6 +229,7 @@ erDiagram
 | `docs/10-test-and-restdocs.md` | JUnit·Mockito, REST Docs, Swagger 비교 |
 | `docs/11-stats-and-jpa.md` | 통계 SQL(윈도우 함수), 화면 설계, JPA vs MyBatis |
 | `docs/12-crawling-flow.md` | 크롤링 흐름 한눈에 (그림 + 단계별 소스 연결) |
+| `docs/13-study-notes-1123.md` | 학습 노트 (N:M, 식별 관계, 트랜잭션 범위, record, 예외, Map 기초, jshell) |
 
 ### 애플리케이션
 - API 호출: `http/crawl.http`
