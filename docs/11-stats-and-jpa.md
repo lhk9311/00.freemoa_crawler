@@ -25,8 +25,58 @@
 | 다크 모드 | OS 설정을 따라감. 색은 어두운 배경 기준으로 다시 골라 대비 확인 |
 
 ### 윈도우 함수
-일반 집계(COUNT, SUM)는 GROUP BY로 행을 **줄인다**. 윈도우 함수는 행을 줄이지 않고 각 행 옆에 **전체(또는 구간) 기준 값**을 붙인다.
 
+SI 통계·집계 화면에서 정말 많이 쓰고 면접에도 나온다.
+
+#### GROUP BY랑 뭐가 다르냐
+
+**GROUP BY는 행을 줄인다.**
+```sql
+SELECT REGION, COUNT(*) FROM TB_PROJECT GROUP BY REGION;
+```
+| REGION | COUNT |
+|---|---|
+| 서울 | 2100 |
+| 경기 | 900 |
+
+공고 4,000건이 지역 수만큼으로 줄었다.
+
+**윈도우 함수는 행을 안 줄이고, 옆에 값을 붙인다.**
+```sql
+SELECT REGION, TITLE, APPLY_COUNT,
+       COUNT(*) OVER (PARTITION BY REGION) AS 지역공고수
+  FROM TB_PROJECT;
+```
+| REGION | TITLE | APPLY_COUNT | 지역공고수 |
+|---|---|---|---|
+| 서울 | 쇼핑몰 구축 | 12 | 2100 |
+| 서울 | 앱 개발 | 5 | 2100 |
+| 경기 | ERP 유지보수 | 3 | 900 |
+
+공고 4,000건이 그대로 있고, 각 행 옆에 "내 지역 공고는 총 몇 건"이 붙었다. (숫자는 예시)
+
+#### 문법 읽는 법
+
+```sql
+함수() OVER (PARTITION BY 그룹 ORDER BY 정렬)
+```
+| 부분 | 뜻 |
+|---|---|
+| `OVER` | "이건 윈도우 함수다" 표시 |
+| `PARTITION BY REGION` | 지역별로 따로따로 계산 (GROUP BY처럼 묶되, 행은 안 줄임) |
+| `ORDER BY ...` | 그 그룹 안에서의 순서 (순위, 누적을 계산할 때) |
+| `OVER ()` 괄호가 비어 있음 | 전체를 하나로 보고 계산 |
+
+#### 자주 쓰는 4개
+
+| 함수 | 결과 | SI 예시 |
+|---|---|---|
+| `ROW_NUMBER()` | 1, 2, 3, 4 (무조건 다른 번호) | 그룹별 1등만 뽑기, 페이징 |
+| `RANK()` | 1, 2, 2, 4 (동점은 같은 순위, 다음 순위 건너뜀) | 매출 순위 |
+| `SUM(x) OVER (ORDER BY 월)` | 누적 합계 | 월별 누적 매출 |
+| `RATIO_TO_REPORT(x) OVER ()` | 전체 대비 비율 0~1 (Oracle 전용) | 지역별 비율 (통계 화면에 쓴 것) |
+
+통계 화면에 쓴 예:
 ```sql
 -- 지역별 건수 + 전체 대비 비율
 SELECT REGION, COUNT(*) AS CNT,
@@ -34,33 +84,42 @@ SELECT REGION, COUNT(*) AS CNT,
   FROM TB_PROJECT
  GROUP BY REGION;
 ```
-결과 모양 (숫자는 예시):
-
 | REGION | CNT | PCT |
 |---|---|---|
 | 서울 | 2100 | 48.2 |
 | 경기 | 900 | 20.7 |
-| ... | | |
 
-| 함수 | 결과 |
-|---|---|
-| `RATIO_TO_REPORT(x) OVER ()` | 전체 합 대비 비율 (0~1) |
-| `SUM(x) OVER (ORDER BY 월)` | 처음부터 이 행까지 누적 |
-| `RANK() OVER (ORDER BY x DESC)` | 순위 (동점 같은 순위, 다음 순위 건너뜀) |
-| `ROW_NUMBER() OVER (PARTITION BY 그룹 ORDER BY x)` | 그룹마다 1부터 번호 (그룹별 1등 뽑기에 자주 씀) |
+GROUP BY로 먼저 지역별 건수를 만들고, 그 결과 전체를 기준으로 비율을 붙인 것이다.
 
-`OVER ()` 안이 비어 있으면 결과 전체가 기준, `PARTITION BY`를 쓰면 그룹마다 따로 계산한다.
+#### 제일 많이 쓰는 패턴: 그룹별 1등 뽑기
 
-### 직접 해 볼 SQL
+"지역별로 지원자가 제일 많은 공고 1건씩"
 ```sql
--- 지역별로 지원자가 가장 많이 몰린 공고 1건씩 (ROW_NUMBER + PARTITION BY)
 SELECT REGION, TITLE, APPLY_COUNT
-  FROM (SELECT REGION, TITLE, APPLY_COUNT,
-               ROW_NUMBER() OVER (PARTITION BY REGION ORDER BY APPLY_COUNT DESC) AS RN
-          FROM TB_PROJECT)
- WHERE RN = 1
+  FROM (
+        SELECT REGION, TITLE, APPLY_COUNT,
+               ROW_NUMBER() OVER (PARTITION BY REGION        -- ① 지역별로 나눠서
+                                  ORDER BY APPLY_COUNT DESC) -- ② 지원자 많은 순으로
+                 AS RN                                       -- ③ 1, 2, 3... 번호 붙이고
+          FROM TB_PROJECT
+       )
+ WHERE RN = 1                                                -- ④ 1번만 남기기
  ORDER BY APPLY_COUNT DESC;
 ```
+- 안쪽에서 번호를 붙이고, 바깥에서 `RN = 1`만 거른다.
+- **왜 한 번 감싸나:** 윈도우 함수 결과(`RN`)는 같은 SELECT의 WHERE에서 바로 못 쓴다.
+  WHERE가 먼저 실행되고 윈도우 함수는 나중에 계산되기 때문이다. 그래서 인라인 뷰(서브쿼리)로 감싼다.
+
+SI에서 "사원별 최근 이력 1건", "제품별 최신 가격", "고객별 마지막 주문" 같은 화면이 다 이 모양이다.
+docs/05의 ROWNUM 페이징과 같이 기억해 둔다.
+
+#### 실습 (DBeaver)
+
+1. 위 "그룹별 1등 뽑기" 쿼리를 그대로 실행한다. 지역마다 1건씩 나오면 성공.
+2. `ROW_NUMBER()`를 `RANK()`로, `WHERE RN = 1`을 `WHERE RN <= 2`로 바꿔서 실행한다.
+   지원자 수가 같은 공고가 있으면 3건 이상 나오는 지역이 생긴다. 왜 그런지 위 "자주 쓰는 4개" 표를 보고 생각해 본다.
+3. 혼자 써 보기: **분야(CATEGORY)별로 예산(COST_MAX)이 제일 큰 공고 1건씩** 뽑는다.
+   "그룹별 1등 뽑기"에서 컬럼 두 개만 바꾸면 된다. COST_MAX가 null인 공고는 `WHERE COST_MAX IS NOT NULL`로 뺀다.
 
 ## 2. JPA 일부 적용
 
