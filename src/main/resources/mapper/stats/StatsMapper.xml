@@ -72,9 +72,9 @@
                 SELECT CASE
                            WHEN COST_MAX IS NULL THEN '협의'
                            WHEN COST_MAX &lt; 300  THEN '300만 미만'
-                           WHEN COST_MAX &lt; 1000 THEN '300~1,000만'
-                           WHEN COST_MAX &lt; 3000 THEN '1,000~3,000만'
-                           ELSE '3,000만 이상'
+                           WHEN COST_MAX &lt; 1000 THEN '300만~1천만'
+                           WHEN COST_MAX &lt; 3000 THEN '1천만~3천만'
+                           ELSE '3천만 이상'
                        END AS BUCKET
                      , CASE
                            WHEN COST_MAX IS NULL THEN 9
@@ -93,6 +93,7 @@
       월별 신규 공고 (최근 N개월)
        - CNT  : 그 달에 등록된 공고 수
        - EXTRA: 누적 공고 수. SUM(CNT) OVER (ORDER BY LABEL) = 첫 달부터 이 달까지의 합
+                (화면 차트에는 안 쓴다. 신규와 누적은 단위가 달라 한 차트에 그리면 y축이 두 개가 되기 때문. 윈도우 함수 예시로 남겨 둠)
       ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -11): 이번 달 1일에서 11개월 전 -> 이번 달 포함 12개월
       XML 안에서 < 는 태그 시작으로 읽히므로 &lt; 로 쓴다 (>= 는 그대로 써도 된다).
     -->

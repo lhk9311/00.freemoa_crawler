@@ -6,184 +6,275 @@
 <title>프리모아 공고 통계</title>
 <!--
   서버 실행 후 http://localhost:8080/stats.html
-  데이터: GET /api/stats (StatsController) -> 차트: Chart.js
-  Spring Boot는 src/main/resources/static/ 아래 파일을 그대로 내보낸다 (컨트롤러 없이).
+  데이터: GET /api/stats (StatsController -> StatsMapper.xml)
+  - 기술/지역: HTML 막대 목록 (이름 · 막대 · 수치가 한 줄)  -> 라이브러리 없이 CSS로
+  - 예산/월별: Apache ECharts 세로 막대
+  색: 강조색 1개(teal) + 회색. 한 차트에 y축은 하나만 (누적은 차트가 아니라 숫자 카드로)
 -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <style>
-  body { margin: 0; font-family: "Malgun Gothic", sans-serif; background: #f5f6f8; color: #222; }
-  header { padding: 20px 32px; background: #fff; border-bottom: 1px solid #e3e5e8; }
-  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
-  header p { margin: 6px 0 0; color: #666; font-size: 13px; }
-  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 32px 0; }
-  .card { background: #fff; border: 1px solid #e3e5e8; border-radius: 8px; padding: 16px 20px; }
-  .card .k { font-size: 12px; color: #777; }
-  .card .v { font-size: 22px; font-weight: 600; margin-top: 6px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 32px 32px; }
-  .panel { background: #fff; border: 1px solid #e3e5e8; border-radius: 8px; padding: 16px 20px; }
-  .panel h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
-  .panel .desc { margin: 0 0 12px; color: #777; font-size: 12px; }
-  .panel.wide { grid-column: span 2; }
-  .chart { position: relative; height: 320px; }
-  #error { display: none; margin: 20px 32px; padding: 12px 16px; background: #fdecec; color: #a12; border-radius: 6px; }
+  .viz-root {
+    color-scheme: light;
+    --page:           #f4f4f2;
+    --surface-1:      #fcfcfb;
+    --border:         #e4e3df;
+    --grid:           #ecebe7;
+    --text-primary:   #1b1b1a;
+    --text-secondary: #5c5b57;
+    --text-muted:     #8a8984;
+    --accent:         #0d9488;
+    --accent-soft:    #ccebe7;
+    --muted-mark:     #b4b2a9;
+    --track:          #efeeea;
+    --hover:          #f3f2ee;
+  }
+  @media (prefers-color-scheme: dark) {
+    .viz-root {
+      color-scheme: dark;
+      --page:           #121211;
+      --surface-1:      #1a1a19;
+      --border:         #2c2c2a;
+      --grid:           #2a2a28;
+      --text-primary:   #f0efec;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #8f8e88;
+      --accent:         #10a596;
+      --accent-soft:    #134e48;
+      --muted-mark:     #5f5e5a;
+      --track:          #262624;
+      --hover:          #232321;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .viz-root {
+    min-height: 100vh; background: var(--page); color: var(--text-primary);
+    font-family: "Pretendard", "Malgun Gothic", sans-serif; font-size: 14px; line-height: 1.5;
+    padding: 32px 40px 48px;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+  header h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  header .meta { color: var(--text-muted); font-size: 12px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+  .kpi { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .kpi .k { color: var(--text-secondary); font-size: 12px; }
+  .kpi .v { font-size: 26px; font-weight: 600; margin-top: 6px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .kpi .s { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+
+  .grid { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px 14px; min-width: 0; }
+  .card h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .card .desc { margin: 4px 0 14px; color: var(--text-muted); font-size: 12px; }
+  .span-2 { grid-column: span 2; }
+
+  /* 이름 · 막대 · 수치 한 줄 목록 (meter list) */
+  .meters { list-style: none; margin: 0; padding: 0; }
+  .meter { display: grid; grid-template-columns: 20px 104px 1fr 48px 64px; align-items: center; gap: 10px;
+           padding: 4px 6px; border-radius: 6px; }
+  .meter:hover { background: var(--hover); }
+  .meter .rank { color: var(--text-muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+  .meter .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meter .track { height: 10px; background: var(--track); border-radius: 0 4px 4px 0; }
+  .meter .bar { height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .meter.other .bar { background: var(--muted-mark); }
+  .meter .fig { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+  .meter .cnt { text-align: right; color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .meters.regions .meter { grid-template-columns: 20px 56px 1fr 48px 64px; }
+  .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+  .chart { height: 240px; }
+  details { margin-top: 6px; color: var(--text-secondary); font-size: 12px; }
+  details summary { cursor: pointer; color: var(--text-muted); }
+  details table { border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  details td, details th { padding: 3px 12px 3px 0; text-align: left; border-bottom: 1px solid var(--grid); font-weight: 400; }
+
+  .note { margin-top: 16px; color: var(--text-muted); font-size: 12px; }
+  #error { display: none; margin-bottom: 16px; padding: 12px 16px; border-radius: 8px;
+           background: #fdecec; color: #8f1d1d; border: 1px solid #f3c4c4; }
+  @media (max-width: 900px) {
+    .viz-root { padding: 20px; }
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    .span-2 { grid-column: auto; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>프리모아 공고 통계</h1>
-  <p id="asOf">불러오는 중...</p>
-</header>
+<div class="viz-root">
+<div class="wrap">
+  <header>
+    <h1>프리모아 공고 통계</h1>
+    <div class="meta" id="asOf">불러오는 중</div>
+  </header>
 
-<div id="error"></div>
+  <div id="error" role="alert"></div>
 
-<section class="summary">
-  <div class="card"><div class="k">전체 공고</div><div class="v" id="sumTotal">-</div></div>
-  <div class="card"><div class="k">가장 많이 요구된 기술</div><div class="v" id="sumSkill">-</div></div>
-  <div class="card"><div class="k">공고가 가장 많은 지역</div><div class="v" id="sumRegion">-</div></div>
-  <div class="card"><div class="k">예산 협의 비율</div><div class="v" id="sumNego">-</div></div>
-</section>
+  <section class="kpis">
+    <div class="kpi"><div class="k">전체 공고</div><div class="v" id="kTotal">-</div><div class="s">수집된 전체</div></div>
+    <div class="kpi"><div class="k">최근 12개월 신규</div><div class="v" id="kRecent">-</div><div class="s" id="kRecentSub">&nbsp;</div></div>
+    <div class="kpi"><div class="k">가장 많이 요구된 기술</div><div class="v" id="kSkill">-</div><div class="s" id="kSkillSub">&nbsp;</div></div>
+    <div class="kpi"><div class="k">공고가 가장 많은 지역</div><div class="v" id="kRegion">-</div><div class="s" id="kRegionSub">&nbsp;</div></div>
+  </section>
 
-<section class="grid">
-  <div class="panel wide">
-    <h2>기술별 요구 비율 (상위 15)</h2>
-    <p class="desc">전체 공고 중 그 기술을 요구하는 공고의 비율. 공고 하나에 기술이 여러 개라 합계는 100%를 넘는다. 막대에 마우스를 올리면 공고 수와 평균 지원자 수가 보인다.</p>
-    <div class="chart"><canvas id="skillChart"></canvas></div>
-  </div>
-  <div class="panel">
-    <h2>지역별 비율</h2>
-    <p class="desc">상위 7개 지역 + 나머지는 기타</p>
-    <div class="chart"><canvas id="regionChart"></canvas></div>
-  </div>
-  <div class="panel">
-    <h2>최대 예산 구간</h2>
-    <p class="desc">단위 만원. 예산 미입력은 협의</p>
-    <div class="chart"><canvas id="budgetChart"></canvas></div>
-  </div>
-  <div class="panel wide">
-    <h2>월별 신규 공고 (최근 12개월)</h2>
-    <p class="desc">막대: 그 달 등록된 공고 수 / 선: 누적 (SQL 윈도우 함수 SUM OVER)</p>
-    <div class="chart"><canvas id="monthlyChart"></canvas></div>
-  </div>
-</section>
+  <section class="grid">
+    <div class="card">
+      <h2>기술별 요구 비율 상위 15</h2>
+      <p class="desc">전체 공고 중 그 기술을 요구하는 비율. 공고 하나에 기술이 여러 개라 합은 100%를 넘는다. 행에 마우스를 올리면 평균 지원자 수가 보인다.</p>
+      <ol class="meters" id="skills"></ol>
+    </div>
+
+    <div class="col">
+    <div class="card">
+      <h2>지역별 공고 비율</h2>
+      <p class="desc">상위 7개 지역, 나머지는 기타</p>
+      <ol class="meters regions" id="regions"></ol>
+    </div>
+
+    <div class="card">
+      <h2>최대 예산 구간</h2>
+      <p class="desc">단위 만원. 예산 미입력은 협의(회색)</p>
+      <div class="chart" id="budgetChart" role="img" aria-label="최대 예산 구간별 공고 수 막대 차트"></div>
+      <details><summary>표로 보기</summary><table id="budgetTable"></table></details>
+    </div>
+    </div>
+
+    <div class="card span-2">
+      <h2>월별 신규 공고</h2>
+      <p class="desc" id="monthlyDesc">최근 12개월, 등록일 기준. 점선은 월평균</p>
+      <div class="chart" id="monthlyChart" role="img" aria-label="월별 신규 공고 수 막대 차트"></div>
+      <details><summary>표로 보기</summary><table id="monthlyTable"></table></details>
+    </div>
+  </section>
+
+  <p class="note">기술 목록은 프리모아 공고의 기술 태그를 그대로 집계한다. "제안요청"처럼 기술이 아닌 태그도 섞여 있다.</p>
+</div>
+</div>
 
 <script>
-const BLUE = '#3b6fd8', BLUE_LIGHT = 'rgba(59,111,216,0.15)', GRAY = '#9aa1ab';
-const PALETTE = ['#3b6fd8', '#2a9d8f', '#e9a23b', '#d1495b', '#7b5ea7', '#5c8a3a', '#c06c84', '#9aa1ab'];
+const css = name => getComputedStyle(document.querySelector('.viz-root')).getPropertyValue(name).trim();
+const fmt = n => Number(n).toLocaleString('ko-KR');
+const pct = v => (Number(v) || 0).toFixed(1) + '%';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-Chart.defaults.font.family = '"Malgun Gothic", sans-serif';
-Chart.defaults.color = '#444';
-
-function fmt(n) { return Number(n).toLocaleString('ko-KR'); }
-
-/** 상위 n개만 남기고 나머지는 '기타'로 합친다 */
 function topWithOthers(rows, n) {
   if (rows.length <= n) return rows;
-  const top = rows.slice(0, n);
   const rest = rows.slice(n);
-  top.push({
-    label: '기타',
+  return rows.slice(0, n).concat([{
+    label: '기타', other: true,
     cnt: rest.reduce((s, r) => s + r.cnt, 0),
     pct: Math.round(rest.reduce((s, r) => s + (r.pct || 0), 0) * 10) / 10
-  });
-  return top;
+  }]);
 }
 
-function renderSummary(d) {
-  document.getElementById('sumTotal').textContent = fmt(d.totalProjects) + '건';
-  document.getElementById('sumSkill').textContent = d.skills.length ? d.skills[0].label + ' ' + d.skills[0].pct + '%' : '-';
-  document.getElementById('sumRegion').textContent = d.regions.length ? d.regions[0].label + ' ' + d.regions[0].pct + '%' : '-';
-  const nego = d.budgets.find(b => b.label === '협의');
-  document.getElementById('sumNego').textContent = nego ? nego.pct + '%' : '0%';
-  document.getElementById('asOf').textContent = '조회 시각 ' + new Date().toLocaleString('ko-KR') + ' · 데이터: /api/stats';
+/* 이름 · 막대 · 수치. 막대 길이는 목록 안 최댓값 기준 */
+function renderMeters(el, rows, extraText) {
+  const max = Math.max(...rows.map(r => r.pct || 0), 0.0001);
+  el.innerHTML = rows.map((r, i) => `
+    <li class="meter${r.other ? ' other' : ''}" title="${esc(r.label)}: ${fmt(r.cnt)}건 (${pct(r.pct)})${extraText ? ' · ' + extraText(r) : ''}">
+      <span class="rank">${r.other ? '' : i + 1}</span>
+      <span class="name">${esc(r.label)}</span>
+      <span class="track"><span class="bar" style="width:${(r.pct / max) * 100}%; display:block"></span></span>
+      <span class="fig">${pct(r.pct)}</span>
+      <span class="cnt">${fmt(r.cnt)}건</span>
+    </li>`).join('');
 }
 
-function renderSkills(rows) {
-  new Chart(document.getElementById('skillChart'), {
-    type: 'bar',
-    data: {
-      labels: rows.map(r => r.label),
-      datasets: [{ label: '요구 비율(%)', data: rows.map(r => r.pct), backgroundColor: BLUE, borderRadius: 3 }]
+function baseColumnOption(labels, values, colors, valueSuffix) {
+  return {
+    animationDuration: 400,
+    grid: { left: 8, right: 8, top: 24, bottom: 4, containLabel: true },
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: css('--hover'), opacity: 0.8 } },
+      backgroundColor: css('--surface-1'), borderColor: css('--border'),
+      textStyle: { color: css('--text-primary'), fontFamily: 'Pretendard, Malgun Gothic, sans-serif', fontSize: 12 },
+      valueFormatter: v => fmt(v) + valueSuffix
     },
-    options: {
-      indexAxis: 'y',
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: c => {
-          const r = rows[c.dataIndex];
-          return `${r.pct}% · ${fmt(r.cnt)}건 · 평균 지원자 ${r.extra ?? 0}명`;
-        } } }
-      },
-      scales: { x: { ticks: { callback: v => v + '%' } } }
-    }
-  });
+    xAxis: {
+      type: 'category', data: labels,
+      axisLine: { lineStyle: { color: css('--border') } }, axisTick: { show: false },
+      // interval 0: 라벨을 건너뛰지 않고 전부 표시, 폭이 모자라면 줄바꿈
+      axisLabel: { color: css('--text-secondary'), fontSize: 11, interval: 0, width: 72, overflow: 'break' }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: css('--grid') } },
+      axisLabel: { color: css('--text-muted'), fontSize: 11, formatter: v => fmt(v) }
+    },
+    series: [{
+      type: 'bar', data: values.map((v, i) => ({ value: v, itemStyle: { color: colors[i] } })),
+      barMaxWidth: 36, itemStyle: { borderRadius: [4, 4, 0, 0] },
+      emphasis: { itemStyle: { opacity: 0.85 } }
+    }],
+    textStyle: { fontFamily: 'Pretendard, Malgun Gothic, sans-serif' }
+  };
 }
 
-function renderRegions(rows) {
-  const data = topWithOthers(rows, 7);
-  new Chart(document.getElementById('regionChart'), {
-    type: 'doughnut',
-    data: {
-      labels: data.map(r => r.label),
-      datasets: [{ data: data.map(r => r.cnt), backgroundColor: PALETTE, borderWidth: 1 }]
-    },
-    options: {
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'right' },
-        tooltip: { callbacks: { label: c => `${data[c.dataIndex].label}: ${fmt(data[c.dataIndex].cnt)}건 (${data[c.dataIndex].pct}%)` } }
-      }
-    }
-  });
-}
-
-function renderBudgets(rows) {
-  new Chart(document.getElementById('budgetChart'), {
-    type: 'bar',
-    data: {
-      labels: rows.map(r => r.label),
-      datasets: [{ label: '공고 수', data: rows.map(r => r.cnt),
-                   backgroundColor: rows.map(r => r.label === '협의' ? GRAY : BLUE), borderRadius: 3 }]
-    },
-    options: {
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: c => `${fmt(rows[c.dataIndex].cnt)}건 (${rows[c.dataIndex].pct}%)` } }
-      }
-    }
-  });
+function renderBudget(rows) {
+  const chart = echarts.init(document.getElementById('budgetChart'));
+  const opt = baseColumnOption(
+    rows.map(r => r.label), rows.map(r => r.cnt),
+    rows.map(r => r.label === '협의' ? css('--muted-mark') : css('--accent')), '건');
+  opt.series[0].label = { show: true, position: 'top', color: css('--text-secondary'), fontSize: 11,
+                          formatter: p => pct(rows[p.dataIndex].pct) };
+  chart.setOption(opt);
+  document.getElementById('budgetTable').innerHTML =
+    '<tr><th>구간</th><th>공고 수</th><th>비율</th></tr>' +
+    rows.map(r => `<tr><td>${esc(r.label)}</td><td>${fmt(r.cnt)}</td><td>${pct(r.pct)}</td></tr>`).join('');
+  return chart;
 }
 
 function renderMonthly(rows) {
-  new Chart(document.getElementById('monthlyChart'), {
-    data: {
-      labels: rows.map(r => r.label),
-      datasets: [
-        { type: 'bar', label: '신규 공고', data: rows.map(r => r.cnt), backgroundColor: BLUE, borderRadius: 3, yAxisID: 'y' },
-        { type: 'line', label: '누적', data: rows.map(r => r.extra), borderColor: '#e9a23b',
-          backgroundColor: 'rgba(233,162,59,0.15)', tension: 0.2, yAxisID: 'y2' }
-      ]
-    },
-    options: {
-      maintainAspectRatio: false,
-      scales: {
-        y:  { position: 'left',  title: { display: true, text: '신규' } },
-        y2: { position: 'right', title: { display: true, text: '누적' }, grid: { drawOnChartArea: false } }
-      }
-    }
-  });
+  const chart = echarts.init(document.getElementById('monthlyChart'));
+  const opt = baseColumnOption(
+    rows.map(r => r.label.slice(2).replace('-', '.')), rows.map(r => r.cnt),
+    rows.map(() => css('--accent')), '건');
+  const avg = rows.length ? rows.reduce((s, r) => s + r.cnt, 0) / rows.length : 0;
+  opt.series[0].markLine = {
+    silent: true, symbol: 'none',
+    lineStyle: { color: css('--text-muted'), type: 'dashed', width: 1 },
+    label: { show: false },
+    data: [{ yAxis: Math.round(avg * 10) / 10 }]
+  };
+  chart.setOption(opt);
+  document.getElementById('monthlyDesc').textContent = `최근 12개월, 등록일 기준. 점선은 월평균 ${avg.toFixed(1)}건`;
+  document.getElementById('monthlyTable').innerHTML =
+    '<tr><th>월</th><th>신규 공고</th></tr>' +
+    rows.map(r => `<tr><td>${esc(r.label)}</td><td>${fmt(r.cnt)}</td></tr>`).join('');
+  return chart;
+}
+
+function render(d) {
+  const recent = d.monthly.reduce((s, r) => s + r.cnt, 0);
+  const top = d.skills[0], topRegion = d.regions[0];
+  document.getElementById('kTotal').textContent = fmt(d.totalProjects) + '건';
+  document.getElementById('kRecent').textContent = fmt(recent) + '건';
+  document.getElementById('kRecentSub').textContent =
+    d.totalProjects ? `전체의 ${(recent * 100 / d.totalProjects).toFixed(1)}%` : '';
+  if (top) {
+    document.getElementById('kSkill').textContent = top.label;
+    document.getElementById('kSkillSub').textContent = `공고의 ${pct(top.pct)} · ${fmt(top.cnt)}건`;
+  }
+  if (topRegion) {
+    document.getElementById('kRegion').textContent = topRegion.label;
+    document.getElementById('kRegionSub').textContent = `전체의 ${pct(topRegion.pct)} · ${fmt(topRegion.cnt)}건`;
+  }
+  document.getElementById('asOf').textContent = '조회 ' + new Date().toLocaleString('ko-KR');
+
+  renderMeters(document.getElementById('skills'), d.skills,
+               r => `평균 지원 ${r.extra ?? 0}명`);
+  renderMeters(document.getElementById('regions'), topWithOthers(d.regions, 7));
+  const charts = [renderBudget(d.budgets), renderMonthly(d.monthly)];
+  window.addEventListener('resize', () => charts.forEach(c => c.resize()));
 }
 
 fetch('/api/stats')
   .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
-  .then(d => {
-    renderSummary(d);
-    renderSkills(d.skills);
-    renderRegions(d.regions);
-    renderBudgets(d.budgets);
-    renderMonthly(d.monthly);
-  })
+  .then(render)
   .catch(e => {
     const el = document.getElementById('error');
     el.style.display = 'block';
