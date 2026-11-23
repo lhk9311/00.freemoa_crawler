@@ -417,7 +417,7 @@
       "name": "3. 통계 / 이력 (MyBatis, JPA)",
       "item": [
         {
-          "name": "통계 (차트 데이터)",
+          "name": "통계 (백엔드 기술 묶음)",
           "request": {
             "method": "GET",
             "header": [],
@@ -431,7 +431,7 @@
                 "stats"
               ]
             },
-            "description": "기술/지역/예산/월별 통계. 화면은 /stats.html"
+            "description": "언어/프레임워크/DB/인프라 묶음별 기술 순위 + 지역. 화면은 /stats.html"
           },
           "event": [
             {
@@ -441,8 +441,83 @@
                 "exec": [
                   "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
                   "const r = pm.response.json();",
-                  "pm.test(\"기술 통계가 있다\", () => pm.expect(r.skills).to.be.an(\"array\"));",
+                  "pm.test(\"묶음 4개 (언어, 프레임워크, DB, 인프라)\", () => pm.expect(r.groups.map(g => g.group)).to.eql([\"LANGUAGE\", \"FRAMEWORK\", \"DATABASE\", \"INFRA\"]));",
+                  "pm.test(\"백엔드 공고 수 <= 전체 공고 수\", () => pm.expect(r.backendProjects).to.be.at.most(r.totalProjects));",
                   "pm.test(\"지역 비율 합이 약 100%\", () => { const s = r.regions.reduce((a, x) => a + x.pct, 0); pm.expect(s).to.be.within(99, 101); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "같이 요구되는 기술 (Java)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stats/together?tech=Java",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stats",
+                "together"
+              ],
+              "query": [
+                {
+                  "key": "tech",
+                  "value": "Java"
+                }
+              ]
+            },
+            "description": "Java 공고에서 같이 요구된 기술 순위. tech 값을 Oracle, Spring Boot 등으로 바꿔 보기"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"기준 기술 자신은 목록에 없다\", () => pm.expect(r.items.map(x => x.name)).to.not.include(r.tech));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "같이 요구되는 기술 - 없는 기술 (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stats/together?tech=Unknown",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stats",
+                "together"
+              ],
+              "query": [
+                {
+                  "key": "tech",
+                  "value": "Unknown"
+                }
+              ]
+            },
+            "description": "분류표(BackendTechCatalog)에 없는 이름 -> 400"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request\", () => pm.response.to.have.status(400));"
                 ]
               }
             }

@@ -3,7 +3,9 @@
 <mapper namespace="com.lhk.freemoa.stats.StatsMapper">
 
     <!--
-      통계 SQL 모음. 모두 결과 컬럼을 LABEL, CNT, PCT, EXTRA 로 맞춰서 StatRow 하나로 받는다.
+      통계 SQL 모음.
+       - 기술 통계: 공고 x 태그 원본만 가져오고 묶기는 자바에서 (selectProjectSkills)
+       - 지역 통계: 결과 컬럼을 LABEL, CNT, PCT 로 맞춰서 StatRow로 받는다
 
       윈도우 함수 (분석 함수) 정리
         일반 집계(COUNT, SUM)는 GROUP BY로 행을 "줄인다".
@@ -19,30 +21,21 @@
     </select>
 
     <!--
-      기술별 통계
-       - CNT   : 이 기술을 요구하는 공고 수
-       - PCT   : 전체 공고 중 몇 %가 이 기술을 요구하나 (공고 하나에 기술이 여러 개라 합이 100%를 넘을 수 있다)
-       - EXTRA : 이 기술 공고의 평균 지원자 수
-      SKILL_NAME은 같은 키(JAVA)라도 표기가 여러 개(Java, JAVA)일 수 있어서 키로 묶고 이름은 MAX로 하나만 고른다.
-      전체 공고 수는 인라인 뷰 T로 한 번만 계산해서 CROSS JOIN 한다 (행이 1개라 곱해도 행 수가 안 늘어남).
+      공고 x 기술 태그 원본
+       공고 1건에 태그가 4개면 같은 PROJ_IDX로 4줄이 나온다.
+       여기서 GROUP BY 하지 않는 이유: "php 8.5"와 "PHP"를 같은 기술로 합치는 규칙이 자바(BackendTechCatalog)에 있어서,
+       SQL에서 SKILL_KEY별로 세면 같은 공고의 PHP가 두 번 세어진다. 묶기는 TechStatsCalculator가 한다.
+       공고 수천 건 x 태그 몇 개라 수만 줄 정도. 통계 화면을 열 때 한 번 읽는 양으로는 충분히 가볍다.
     -->
-    <select id="selectSkillStats" resultType="com.lhk.freemoa.stats.StatRow">
-        SELECT G.LABEL
-             , G.CNT
-             , ROUND(G.CNT * 100 / T.TOTAL, 1) AS PCT
-             , G.EXTRA
-          FROM (
-                SELECT MAX(S.SKILL_NAME)            AS LABEL
-                     , COUNT(*)                     AS CNT
-                     , ROUND(AVG(P.APPLY_COUNT), 1) AS EXTRA
-                  FROM TB_PROJECT_SKILL PS
-                  JOIN TB_SKILL   S ON S.SKILL_ID = PS.SKILL_ID
-                  JOIN TB_PROJECT P ON P.PROJ_IDX = PS.PROJ_IDX
-                 GROUP BY S.SKILL_KEY
-               ) G
-         CROSS JOIN (SELECT COUNT(*) AS TOTAL FROM TB_PROJECT) T
-         ORDER BY G.CNT DESC, G.LABEL
-         FETCH FIRST #{limit} ROWS ONLY
+    <select id="selectProjectSkills" resultType="com.lhk.freemoa.stats.ProjectSkillRow">
+        SELECT P.PROJ_IDX
+             , S.SKILL_KEY
+             , S.SKILL_NAME
+             , P.APPLY_COUNT
+             , P.COST_MAX
+          FROM TB_PROJECT_SKILL PS
+          JOIN TB_SKILL   S ON S.SKILL_ID = PS.SKILL_ID
+          JOIN TB_PROJECT P ON P.PROJ_IDX = PS.PROJ_IDX
     </select>
 
     <!--
@@ -57,58 +50,6 @@
           FROM TB_PROJECT
          GROUP BY NVL(REGION, '미지정')
          ORDER BY CNT DESC
-    </select>
-
-    <!--
-      예산 구간별 통계 (최대 예산 COST_MAX, 단위 만원)
-      인라인 뷰에서 CASE로 구간 이름과 정렬 순서를 먼저 만들고, 바깥에서 묶는다.
-      (CASE를 GROUP BY에 한 번 더 쓰지 않으려고. 조건이 두 군데 있으면 하나만 고치는 실수가 생긴다)
-    -->
-    <select id="selectBudgetStats" resultType="com.lhk.freemoa.stats.StatRow">
-        SELECT BUCKET                                            AS LABEL
-             , COUNT(*)                                          AS CNT
-             , ROUND(RATIO_TO_REPORT(COUNT(*)) OVER () * 100, 1) AS PCT
-          FROM (
-                SELECT CASE
-                           WHEN COST_MAX IS NULL THEN '협의'
-                           WHEN COST_MAX &lt; 300  THEN '300만 미만'
-                           WHEN COST_MAX &lt; 1000 THEN '300만~1천만'
-                           WHEN COST_MAX &lt; 3000 THEN '1천만~3천만'
-                           ELSE '3천만 이상'
-                       END AS BUCKET
-                     , CASE
-                           WHEN COST_MAX IS NULL THEN 9
-                           WHEN COST_MAX &lt; 300  THEN 1
-                           WHEN COST_MAX &lt; 1000 THEN 2
-                           WHEN COST_MAX &lt; 3000 THEN 3
-                           ELSE 4
-                       END AS SORT_NO
-                  FROM TB_PROJECT
-               )
-         GROUP BY BUCKET, SORT_NO
-         ORDER BY SORT_NO
-    </select>
-
-    <!--
-      월별 신규 공고 (최근 N개월)
-       - CNT  : 그 달에 등록된 공고 수
-       - EXTRA: 누적 공고 수. SUM(CNT) OVER (ORDER BY LABEL) = 첫 달부터 이 달까지의 합
-                (화면 차트에는 안 쓴다. 신규와 누적은 단위가 달라 한 차트에 그리면 y축이 두 개가 되기 때문. 윈도우 함수 예시로 남겨 둠)
-      ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -11): 이번 달 1일에서 11개월 전 -> 이번 달 포함 12개월
-      XML 안에서 < 는 태그 시작으로 읽히므로 &lt; 로 쓴다 (>= 는 그대로 써도 된다).
-    -->
-    <select id="selectMonthlyStats" resultType="com.lhk.freemoa.stats.StatRow">
-        SELECT LABEL
-             , CNT
-             , SUM(CNT) OVER (ORDER BY LABEL) AS EXTRA
-          FROM (
-                SELECT TO_CHAR(POSTED_AT, 'YYYY-MM') AS LABEL
-                     , COUNT(*)                      AS CNT
-                  FROM TB_PROJECT
-                 WHERE POSTED_AT >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -(#{months} - 1))
-                 GROUP BY TO_CHAR(POSTED_AT, 'YYYY-MM')
-               )
-         ORDER BY LABEL
     </select>
 
 </mapper>

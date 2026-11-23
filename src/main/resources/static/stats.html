@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>프리모아 공고 통계</title>
+<title>백엔드 기술 수요 - 프리모아 공고</title>
 <!--
   서버 실행 후 http://localhost:8080/stats.html
-  데이터: GET /api/stats (StatsController -> StatsMapper.xml)
-  - 기술/지역: HTML 막대 목록 (이름 · 막대 · 수치가 한 줄)  -> 라이브러리 없이 CSS로
-  - 예산/월별: Apache ECharts 세로 막대
-  색: 강조색 1개(teal) + 회색. 한 차트에 y축은 하나만 (누적은 차트가 아니라 숫자 카드로)
+  데이터
+   - GET /api/stats                  : 묶음(언어/프레임워크/DB/인프라)별 순위, 지역
+   - GET /api/stats/together?tech=X  : X 공고에서 같이 요구된 기술
+   (StatsController -> StatsService -> StatsMapper.xml + TechStatsCalculator)
+  차트 라이브러리 없이 HTML 막대 목록(이름 · 막대 · 비율 · 건수 한 줄)으로 그린다.
+  색: 강조색 1개(teal) + 회색(분류표에 없는 "기타" 기술)
 -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <style>
   .viz-root {
     color-scheme: light;
@@ -25,6 +26,7 @@
     --text-muted:     #8a8984;
     --accent:         #0d9488;
     --accent-soft:    #ccebe7;
+    --accent-text:    #0f5f58;
     --muted-mark:     #b4b2a9;
     --track:          #efeeea;
     --hover:          #f3f2ee;
@@ -41,6 +43,7 @@
       --text-muted:     #8f8e88;
       --accent:         #10a596;
       --accent-soft:    #134e48;
+      --accent-text:    #7fd6cb;
       --muted-mark:     #5f5e5a;
       --track:          #262624;
       --hover:          #232321;
@@ -66,41 +69,52 @@
   .kpi .v { font-size: 26px; font-weight: 600; margin-top: 6px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
   .kpi .s { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
 
-  .grid { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .grid.bottom { grid-template-columns: 3fr 2fr; }
   .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px 14px; min-width: 0; }
   .card h2 { margin: 0; font-size: 15px; font-weight: 600; }
   .card .desc { margin: 4px 0 14px; color: var(--text-muted); font-size: 12px; }
-  .span-2 { grid-column: span 2; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
-  /* 이름 · 막대 · 수치 한 줄 목록 (meter list) */
+  /* 이름 · 막대 · 비율 · 건수 한 줄 목록 */
   .meters { list-style: none; margin: 0; padding: 0; }
-  .meter { display: grid; grid-template-columns: 20px 104px 1fr 48px 64px; align-items: center; gap: 10px;
+  .meter { display: grid; grid-template-columns: 20px 124px 1fr 52px 56px; align-items: center; gap: 10px;
            padding: 4px 6px; border-radius: 6px; }
   .meter:hover { background: var(--hover); }
   .meter .rank { color: var(--text-muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
   .meter .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meter .name button { all: unset; cursor: pointer; border-bottom: 1px dashed var(--muted-mark); }
+  .meter .name button:hover, .meter .name button:focus-visible { color: var(--accent-text); border-bottom-color: var(--accent); }
   .meter .track { height: 10px; background: var(--track); border-radius: 0 4px 4px 0; }
-  .meter .bar { height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .meter .bar { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
   .meter.other .bar { background: var(--muted-mark); }
   .meter .fig { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
   .meter .cnt { text-align: right; color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .meters.together .meter { grid-template-columns: 20px 132px 72px 1fr 52px 56px; }
+  .meter .grp { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
   .meters.regions .meter { grid-template-columns: 20px 56px 1fr 48px 64px; }
-  .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .empty { color: var(--text-muted); font-size: 12px; padding: 8px 6px; }
 
-  .chart { height: 240px; }
+  select { font: inherit; font-size: 13px; color: var(--text-primary); background: var(--surface-1);
+           border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; }
+
   details { margin-top: 6px; color: var(--text-secondary); font-size: 12px; }
   details summary { cursor: pointer; color: var(--text-muted); }
-  details table { border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  details table { border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; width: 100%; }
   details td, details th { padding: 3px 12px 3px 0; text-align: left; border-bottom: 1px solid var(--grid); font-weight: 400; }
+  details th { color: var(--text-muted); }
+  details td.n, details th.n { text-align: right; }
 
-  .note { margin-top: 16px; color: var(--text-muted); font-size: 12px; }
+  .rules { margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 12px; }
+  .rules li { margin-bottom: 6px; }
+  .rules code { font-size: 11px; background: var(--track); padding: 1px 4px; border-radius: 4px; }
+
   #error { display: none; margin-bottom: 16px; padding: 12px 16px; border-radius: 8px;
            background: #fdecec; color: #8f1d1d; border: 1px solid #f3c4c4; }
   @media (max-width: 900px) {
     .viz-root { padding: 20px; }
     .kpis { grid-template-columns: repeat(2, 1fr); }
-    .grid { grid-template-columns: 1fr; }
-    .span-2 { grid-column: auto; }
+    .grid, .grid.bottom { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -108,7 +122,7 @@
 <div class="viz-root">
 <div class="wrap">
   <header>
-    <h1>프리모아 공고 통계</h1>
+    <h1>백엔드 기술 수요</h1>
     <div class="meta" id="asOf">불러오는 중</div>
   </header>
 
@@ -116,170 +130,161 @@
 
   <section class="kpis">
     <div class="kpi"><div class="k">전체 공고</div><div class="v" id="kTotal">-</div><div class="s">수집된 전체</div></div>
-    <div class="kpi"><div class="k">최근 12개월 신규</div><div class="v" id="kRecent">-</div><div class="s" id="kRecentSub">&nbsp;</div></div>
-    <div class="kpi"><div class="k">가장 많이 요구된 기술</div><div class="v" id="kSkill">-</div><div class="s" id="kSkillSub">&nbsp;</div></div>
-    <div class="kpi"><div class="k">공고가 가장 많은 지역</div><div class="v" id="kRegion">-</div><div class="s" id="kRegionSub">&nbsp;</div></div>
+    <div class="kpi"><div class="k">백엔드 기술을 요구한 공고</div><div class="v" id="kBackend">-</div><div class="s" id="kBackendSub">&nbsp;</div></div>
+    <div class="kpi"><div class="k">가장 많이 요구된 언어</div><div class="v" id="kLang">-</div><div class="s" id="kLangSub">&nbsp;</div></div>
+    <div class="kpi"><div class="k">가장 많이 요구된 DB</div><div class="v" id="kDb">-</div><div class="s" id="kDbSub">&nbsp;</div></div>
   </section>
 
-  <section class="grid">
+  <!-- 묶음 카드 4개는 스크립트가 채운다 -->
+  <section class="grid" id="groups"></section>
+
+  <section class="grid bottom">
     <div class="card">
-      <h2>기술별 요구 비율 상위 15</h2>
-      <p class="desc">전체 공고 중 그 기술을 요구하는 비율. 공고 하나에 기술이 여러 개라 합은 100%를 넘는다. 행에 마우스를 올리면 평균 지원자 수가 보인다.</p>
-      <ol class="meters" id="skills"></ol>
+      <div class="card-head">
+        <h2>같이 요구되는 기술</h2>
+        <label><span class="sr" style="position:absolute;left:-9999px">기준 기술</span><select id="techSelect"></select></label>
+      </div>
+      <p class="desc" id="togetherDesc">&nbsp;</p>
+      <ol class="meters together" id="together"></ol>
+      <details><summary>표로 보기</summary><table id="togetherTable"></table></details>
     </div>
 
-    <div class="col">
-    <div class="card">
-      <h2>지역별 공고 비율</h2>
-      <p class="desc">상위 7개 지역, 나머지는 기타</p>
-      <ol class="meters regions" id="regions"></ol>
-    </div>
-
-    <div class="card">
-      <h2>최대 예산 구간</h2>
-      <p class="desc">단위 만원. 예산 미입력은 협의(회색)</p>
-      <div class="chart" id="budgetChart" role="img" aria-label="최대 예산 구간별 공고 수 막대 차트"></div>
-      <details><summary>표로 보기</summary><table id="budgetTable"></table></details>
-    </div>
-    </div>
-
-    <div class="card span-2">
-      <h2>월별 신규 공고</h2>
-      <p class="desc" id="monthlyDesc">최근 12개월, 등록일 기준. 점선은 월평균</p>
-      <div class="chart" id="monthlyChart" role="img" aria-label="월별 신규 공고 수 막대 차트"></div>
-      <details><summary>표로 보기</summary><table id="monthlyTable"></table></details>
+    <div style="display:flex; flex-direction:column; gap:12px; min-width:0">
+      <div class="card">
+        <h2>지역별 공고 비율</h2>
+        <p class="desc">상위 6개 지역, 나머지는 기타</p>
+        <ol class="meters regions" id="regions"></ol>
+      </div>
+      <div class="card">
+        <h2>집계 기준</h2>
+        <ul class="rules" style="margin-top:10px">
+          <li>버전만 다른 태그는 같은 기술로 센다. <code>php 8.5</code>, <code>PHP</code> → PHP</li>
+          <li>한 공고에 같은 기술이 여러 번 달려 있어도 1건이다.</li>
+          <li>비율은 전체 공고 대비. 공고 하나에 기술이 여러 개라 합은 100%를 넘는다.</li>
+          <li>평균 예산은 예산을 입력한 공고만으로 계산한다 (단위 만원).</li>
+          <li>분류 목록: <code>BackendTechCatalog.java</code>. 목록에 없는 기술은 "같이 요구되는 기술"에서 기타(회색)로만 보인다.</li>
+        </ul>
+      </div>
     </div>
   </section>
-
-  <p class="note">기술 목록은 프리모아 공고의 기술 태그를 그대로 집계한다. "제안요청"처럼 기술이 아닌 태그도 섞여 있다.</p>
 </div>
 </div>
 
 <script>
-const css = name => getComputedStyle(document.querySelector('.viz-root')).getPropertyValue(name).trim();
 const fmt = n => Number(n).toLocaleString('ko-KR');
 const pct = v => (Number(v) || 0).toFixed(1) + '%';
+const won = v => v == null ? '-' : fmt(v) + '만';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = id => document.getElementById(id);
 
-function topWithOthers(rows, n) {
-  if (rows.length <= n) return rows;
-  const rest = rows.slice(n);
-  return rows.slice(0, n).concat([{
-    label: '기타', other: true,
-    cnt: rest.reduce((s, r) => s + r.cnt, 0),
-    pct: Math.round(rest.reduce((s, r) => s + (r.pct || 0), 0) * 10) / 10
-  }]);
+const GROUP_DESC = {
+  LANGUAGE: 'Java, PHP, Python 같은 서버 언어',
+  FRAMEWORK: 'Spring, 전자정부프레임워크, JSP, Django 등',
+  DATABASE: 'Oracle, MySQL, MSSQL 등',
+  INFRA: 'AWS, Linux, 웹/WAS 서버 등'
+};
+
+function tip(r) {
+  return `${r.name}: ${fmt(r.cnt)}건 (${pct(r.pct)}) · 평균 지원 ${r.avgApply ?? '-'}명 · 평균 최대예산 ${won(r.avgBudget)}원`;
 }
 
-/* 이름 · 막대 · 수치. 막대 길이는 목록 안 최댓값 기준 */
-function renderMeters(el, rows, extraText) {
+/* 이름 · 막대 · 비율 · 건수. 막대 길이는 목록 안 최댓값 기준. clickable이면 이름을 누를 때 "같이 요구되는 기술" 기준을 바꾼다 */
+function meterRows(rows, { clickable = false, showGroup = false } = {}) {
+  if (!rows.length) return '<li class="empty">해당 기술을 요구한 공고가 없습니다</li>';
   const max = Math.max(...rows.map(r => r.pct || 0), 0.0001);
-  el.innerHTML = rows.map((r, i) => `
-    <li class="meter${r.other ? ' other' : ''}" title="${esc(r.label)}: ${fmt(r.cnt)}건 (${pct(r.pct)})${extraText ? ' · ' + extraText(r) : ''}">
-      <span class="rank">${r.other ? '' : i + 1}</span>
-      <span class="name">${esc(r.label)}</span>
-      <span class="track"><span class="bar" style="width:${(r.pct / max) * 100}%; display:block"></span></span>
+  return rows.map((r, i) => `
+    <li class="meter${r.group === '기타' ? ' other' : ''}" title="${esc(tip(r))}">
+      <span class="rank">${r.rest ? '' : i + 1}</span>
+      <span class="name">${clickable ? `<button type="button" data-tech="${esc(r.name)}">${esc(r.name)}</button>` : esc(r.name)}</span>
+      ${showGroup ? `<span class="grp">${esc(r.group)}</span>` : ''}
+      <span class="track"><span class="bar" style="width:${(r.pct / max) * 100}%"></span></span>
       <span class="fig">${pct(r.pct)}</span>
       <span class="cnt">${fmt(r.cnt)}건</span>
     </li>`).join('');
 }
 
-function baseColumnOption(labels, values, colors, valueSuffix) {
-  return {
-    animationDuration: 400,
-    grid: { left: 8, right: 8, top: 24, bottom: 4, containLabel: true },
-    tooltip: {
-      trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: css('--hover'), opacity: 0.8 } },
-      backgroundColor: css('--surface-1'), borderColor: css('--border'),
-      textStyle: { color: css('--text-primary'), fontFamily: 'Pretendard, Malgun Gothic, sans-serif', fontSize: 12 },
-      valueFormatter: v => fmt(v) + valueSuffix
-    },
-    xAxis: {
-      type: 'category', data: labels,
-      axisLine: { lineStyle: { color: css('--border') } }, axisTick: { show: false },
-      // interval 0: 라벨을 건너뛰지 않고 전부 표시, 폭이 모자라면 줄바꿈
-      axisLabel: { color: css('--text-secondary'), fontSize: 11, interval: 0, width: 72, overflow: 'break' }
-    },
-    yAxis: {
-      type: 'value',
-      splitLine: { lineStyle: { color: css('--grid') } },
-      axisLabel: { color: css('--text-muted'), fontSize: 11, formatter: v => fmt(v) }
-    },
-    series: [{
-      type: 'bar', data: values.map((v, i) => ({ value: v, itemStyle: { color: colors[i] } })),
-      barMaxWidth: 36, itemStyle: { borderRadius: [4, 4, 0, 0] },
-      emphasis: { itemStyle: { opacity: 0.85 } }
-    }],
-    textStyle: { fontFamily: 'Pretendard, Malgun Gothic, sans-serif' }
-  };
+function tableHtml(rows, showGroup) {
+  return `<tr><th>기술</th>${showGroup ? '<th>묶음</th>' : ''}<th class="n">공고</th><th class="n">비율</th><th class="n">평균 지원자</th><th class="n">평균 최대예산</th></tr>` +
+    rows.map(r => `<tr><td>${esc(r.name)}</td>${showGroup ? `<td>${esc(r.group)}</td>` : ''}<td class="n">${fmt(r.cnt)}</td><td class="n">${pct(r.pct)}</td>` +
+                  `<td class="n">${r.avgApply ?? '-'}명</td><td class="n">${won(r.avgBudget)}</td></tr>`).join('');
 }
 
-function renderBudget(rows) {
-  const chart = echarts.init(document.getElementById('budgetChart'));
-  const opt = baseColumnOption(
-    rows.map(r => r.label), rows.map(r => r.cnt),
-    rows.map(r => r.label === '협의' ? css('--muted-mark') : css('--accent')), '건');
-  opt.series[0].label = { show: true, position: 'top', color: css('--text-secondary'), fontSize: 11,
-                          formatter: p => pct(rows[p.dataIndex].pct) };
-  chart.setOption(opt);
-  document.getElementById('budgetTable').innerHTML =
-    '<tr><th>구간</th><th>공고 수</th><th>비율</th></tr>' +
-    rows.map(r => `<tr><td>${esc(r.label)}</td><td>${fmt(r.cnt)}</td><td>${pct(r.pct)}</td></tr>`).join('');
-  return chart;
+function renderGroups(groups) {
+  $('groups').innerHTML = groups.map(g => `
+    <div class="card">
+      <h2>${esc(g.label)} 상위 ${g.items.length}</h2>
+      <p class="desc">${esc(GROUP_DESC[g.group] || '')} · 이름을 누르면 아래에서 같이 요구되는 기술을 본다</p>
+      <ol class="meters">${meterRows(g.items, { clickable: true })}</ol>
+      <details><summary>표로 보기 (평균 지원자, 평균 최대예산)</summary><table>${tableHtml(g.items, false)}</table></details>
+    </div>`).join('');
 }
 
-function renderMonthly(rows) {
-  const chart = echarts.init(document.getElementById('monthlyChart'));
-  const opt = baseColumnOption(
-    rows.map(r => r.label.slice(2).replace('-', '.')), rows.map(r => r.cnt),
-    rows.map(() => css('--accent')), '건');
-  const avg = rows.length ? rows.reduce((s, r) => s + r.cnt, 0) / rows.length : 0;
-  opt.series[0].markLine = {
-    silent: true, symbol: 'none',
-    lineStyle: { color: css('--text-muted'), type: 'dashed', width: 1 },
-    label: { show: false },
-    data: [{ yAxis: Math.round(avg * 10) / 10 }]
-  };
-  chart.setOption(opt);
-  document.getElementById('monthlyDesc').textContent = `최근 12개월, 등록일 기준. 점선은 월평균 ${avg.toFixed(1)}건`;
-  document.getElementById('monthlyTable').innerHTML =
-    '<tr><th>월</th><th>신규 공고</th></tr>' +
-    rows.map(r => `<tr><td>${esc(r.label)}</td><td>${fmt(r.cnt)}</td></tr>`).join('');
-  return chart;
+function renderRegions(rows) {
+  const n = 6;
+  const shown = rows.slice(0, n).map(r => ({ name: r.label, cnt: r.cnt, pct: r.pct }));
+  if (rows.length > n) {
+    const rest = rows.slice(n);
+    shown.push({ name: '기타', group: '기타', rest: true, cnt: rest.reduce((s, r) => s + r.cnt, 0),
+                 pct: Math.round(rest.reduce((s, r) => s + (r.pct || 0), 0) * 10) / 10 });
+  }
+  $('regions').innerHTML = meterRows(shown).replace(/ title="[^"]*"/g, '');
+}
+
+function fillSelect(groups) {
+  $('techSelect').innerHTML = groups.filter(g => g.items.length).map(g =>
+    `<optgroup label="${esc(g.label)}">${g.items.map(t => `<option>${esc(t.name)}</option>`).join('')}</optgroup>`).join('');
+}
+
+function loadTogether(tech) {
+  $('techSelect').value = tech;
+  $('togetherDesc').textContent = '불러오는 중';
+  fetch('/api/stats/together?tech=' + encodeURIComponent(tech))
+    .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+    .then(d => {
+      $('techSelect').value = d.tech;
+      $('togetherDesc').textContent =
+        `${d.tech} 공고 ${fmt(d.baseCount)}건 중에서 같이 요구된 비율 · 회색은 분류 목록에 없는 기술`;
+      $('together').innerHTML = meterRows(d.items, { showGroup: true });
+      $('togetherTable').innerHTML = tableHtml(d.items, true);
+    })
+    .catch(showError);
 }
 
 function render(d) {
-  const recent = d.monthly.reduce((s, r) => s + r.cnt, 0);
-  const top = d.skills[0], topRegion = d.regions[0];
-  document.getElementById('kTotal').textContent = fmt(d.totalProjects) + '건';
-  document.getElementById('kRecent').textContent = fmt(recent) + '건';
-  document.getElementById('kRecentSub').textContent =
-    d.totalProjects ? `전체의 ${(recent * 100 / d.totalProjects).toFixed(1)}%` : '';
-  if (top) {
-    document.getElementById('kSkill').textContent = top.label;
-    document.getElementById('kSkillSub').textContent = `공고의 ${pct(top.pct)} · ${fmt(top.cnt)}건`;
-  }
-  if (topRegion) {
-    document.getElementById('kRegion').textContent = topRegion.label;
-    document.getElementById('kRegionSub').textContent = `전체의 ${pct(topRegion.pct)} · ${fmt(topRegion.cnt)}건`;
-  }
-  document.getElementById('asOf').textContent = '조회 ' + new Date().toLocaleString('ko-KR');
+  const byGroup = Object.fromEntries(d.groups.map(g => [g.group, g]));
+  const lang = byGroup.LANGUAGE?.items[0], db = byGroup.DATABASE?.items[0];
 
-  renderMeters(document.getElementById('skills'), d.skills,
-               r => `평균 지원 ${r.extra ?? 0}명`);
-  renderMeters(document.getElementById('regions'), topWithOthers(d.regions, 7));
-  const charts = [renderBudget(d.budgets), renderMonthly(d.monthly)];
-  window.addEventListener('resize', () => charts.forEach(c => c.resize()));
+  $('kTotal').textContent = fmt(d.totalProjects) + '건';
+  $('kBackend').textContent = fmt(d.backendProjects) + '건';
+  $('kBackendSub').textContent = d.totalProjects ? `전체의 ${pct(d.backendProjects * 100 / d.totalProjects)} · 언어/프레임워크/DB` : '';
+  if (lang) { $('kLang').textContent = lang.name; $('kLangSub').textContent = `공고의 ${pct(lang.pct)} · ${fmt(lang.cnt)}건`; }
+  if (db)   { $('kDb').textContent = db.name;     $('kDbSub').textContent   = `공고의 ${pct(db.pct)} · ${fmt(db.cnt)}건`; }
+  $('asOf').textContent = '프리모아 공고 기준 · 조회 ' + new Date().toLocaleString('ko-KR');
+
+  renderGroups(d.groups);
+  renderRegions(d.regions);
+  fillSelect(d.groups);
+  if (lang) loadTogether(lang.name);
 }
+
+function showError(e) {
+  const el = $('error');
+  el.style.display = 'block';
+  el.textContent = '통계를 불러오지 못했습니다 (' + e.message + '). 서버가 켜져 있는지, IntelliJ 콘솔에 에러가 있는지 확인하세요.';
+}
+
+$('techSelect').addEventListener('change', e => loadTogether(e.target.value));
+$('groups').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tech]');
+  if (!btn) return;
+  loadTogether(btn.dataset.tech);
+  $('together').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
 
 fetch('/api/stats')
   .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
   .then(render)
-  .catch(e => {
-    const el = document.getElementById('error');
-    el.style.display = 'block';
-    el.textContent = '통계를 불러오지 못했습니다 (' + e.message + '). 서버가 켜져 있는지, IntelliJ 콘솔에 에러가 있는지 확인하세요.';
-  });
+  .catch(showError);
 </script>
 </body>
 </html>

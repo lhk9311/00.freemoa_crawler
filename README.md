@@ -227,7 +227,7 @@ erDiagram
 | `docs/08-study-notes-1119.md` | 학습 노트 (DB 설계, 파싱 흐름, 배치, 디버깅) |
 | `docs/09-debugging-and-postman.md` | 디버깅 실습, Postman 컬렉션 |
 | `docs/10-test-and-restdocs.md` | JUnit·Mockito, REST Docs, Swagger 비교 |
-| `docs/11-stats-and-jpa.md` | 통계 SQL(윈도우 함수), 화면 설계, JPA vs MyBatis |
+| `docs/11-stats-and-jpa.md` | 백엔드 기술 수요 통계(기술 묶음, 같이 요구되는 기술), 윈도우 함수, JPA vs MyBatis |
 | `docs/12-crawling-flow.md` | 크롤링 흐름 한눈에 (그림 + 단계별 소스 연결) |
 | `docs/13-study-notes-1123.md` | 학습 노트 (N:M, 식별 관계, 트랜잭션 범위, record, 예외, Map 기초, jshell) |
 
