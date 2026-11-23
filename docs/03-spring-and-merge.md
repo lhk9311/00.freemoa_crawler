@@ -48,12 +48,16 @@ SELECT로 확인한 다음 INSERT 또는 UPDATE를 하면 SQL이 2번 나가고,
 ## 3. 트랜잭션 경계를 어디에 두었나
 
 ```
-CrawlService.crawl()            ← @Transactional 없음
- ├─ projectCollector.collect()  ← HTTP, 페이지당 1초 대기 (느림)
- └─ projectSaveService.saveAll()  ← @Transactional (DB 작업만, 빠름)
+CrawlService.crawl()                  ← @Transactional 없음
+ ├─ projectCollector.collect()        ← HTTP, 페이지당 1초 대기 (느림)
+ └─ projectSaveService.saveAll()      ← @Transactional 없음 (반복만 담당)
+      └─ projectWriter.saveOne()      ← @Transactional (공고 1건 = 트랜잭션 1개)
 ```
 `CrawlService`에 `@Transactional`을 붙이면 HTTP 수집 내내 DB 커넥션을 붙잡는다.
 커넥션 풀(HikariCP 기본 10개)이 바닥나면 다른 요청이 전부 멈춘다.
+
+3단계 처음에는 `saveAll` 전체에 `@Transactional`을 붙였지만,
+4단계에서 공고 1건 단위(`ProjectWriter.saveOne`)로 쪼갰다. 이유는 [04-transaction.md](04-transaction.md) 참고.
 
 ## 4. 실무에서 만나는 함정들 (코드 주석에도 있음)
 - **IN 절 1000개 제한** (`ORA-01795`): `selectExistingProjIdx`
