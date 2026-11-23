@@ -29,4 +29,6 @@ class SkillParserTest {
         assertThat(SkillParser.toKey("My SQL")).isEqualTo("MYSQL");
         assertThat(SkillParser.toKey("spring boot")).isEqualTo("SPRINGBOOT");
     }
+
+
 }

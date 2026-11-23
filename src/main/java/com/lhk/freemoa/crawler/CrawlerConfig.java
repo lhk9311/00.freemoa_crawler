@@ -38,7 +38,7 @@ public class CrawlerConfig {
     @Bean
     public HttpClient freemoaHttpClient() {
         return HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
+                .connectTimeout(Duration.ofSeconds(5)) // timeout 설정 -> 최장 연결 5초 세팅
                 .build();
     }
 

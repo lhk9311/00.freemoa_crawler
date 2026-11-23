@@ -135,6 +135,7 @@ public class ProjectCollector {
      *
      * 재시도 간격은 2초, 4초로 늘린다 (백오프). 상대 서버가 바빠서 느린 거라면 바로 다시 보내는 건 부담만 더한다.
      */
+    // 타임아웃 시 재시도 + 백오프
     private FreemoaListResponse fetchWithRetry(String keyword, int page) {
         for (int attempt = 1; ; attempt++) {
             try {

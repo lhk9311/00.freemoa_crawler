@@ -50,7 +50,7 @@ public class FreemoaApiClient {
      */
     public FreemoaListResponse fetchList(String keyword, int page) {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + LIST_PATH))
-                .timeout(REQUEST_TIMEOUT)
+                .timeout(REQUEST_TIMEOUT) // 응답 10초 최장시간 세팅
                 .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
                 .header("User-Agent", USER_AGENT)
                 // 이 API는 프리모아 목록 화면의 Ajax 요청에만 응답한다. 두 헤더가 없으면 HTTP 404.
