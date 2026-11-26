@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FDL version="2.1">
+  <Form id="frmStats" width="1280" height="720" titletext="백엔드 기술 수요" onload="Form_onload">
+    <Layouts>
+      <Layout height="720" width="1280">
+        <!-- ===== 제목 ===== -->
+        <Static id="sta_title" taborder="0" text="백엔드 기술 수요" left="20" top="16" width="300" height="32" font="bold 20px/normal &quot;Malgun Gothic&quot;"/>
+        <Static id="sta_sub" taborder="1" text="프리모아 공고 기준 · 버전만 다른 태그(php 8.5, PHP)는 같은 기술로 셈 · 기술에 마우스를 올리면 평균 지원자/예산" left="330" top="22" right="120" height="24" color="#8a8984"/>
+        <Button id="btn_close" taborder="2" text="닫기" right="20" top="18" width="90" height="28" onclick="btn_close_onclick"/>
+
+        <!-- ===== 숫자 카드 4개 ===== -->
+        <Static id="sta_kTotalLabel" taborder="3" text="전체 공고" left="20" top="60" width="300" height="20" color="#5c5b57"/>
+        <Static id="sta_kTotal" taborder="4" text="-" left="20" top="80" width="300" height="40" font="bold 22px/normal &quot;Malgun Gothic&quot;"/>
+        <Static id="sta_kBackendLabel" taborder="5" text="백엔드 기술(언어/프레임워크/DB)을 요구한 공고" left="330" top="60" width="300" height="20" color="#5c5b57"/>
+        <Static id="sta_kBackend" taborder="6" text="-" left="330" top="80" width="300" height="40" font="bold 22px/normal &quot;Malgun Gothic&quot;"/>
+        <Static id="sta_kLangLabel" taborder="7" text="가장 많이 요구된 언어" left="640" top="60" width="300" height="20" color="#5c5b57"/>
+        <Static id="sta_kLang" taborder="8" text="-" left="640" top="80" width="300" height="40" font="bold 22px/normal &quot;Malgun Gothic&quot;"/>
+        <Static id="sta_kDbLabel" taborder="9" text="가장 많이 요구된 DB" left="950" top="60" width="310" height="20" color="#5c5b57"/>
+        <Static id="sta_kDb" taborder="10" text="-" left="950" top="80" width="310" height="40" font="bold 22px/normal &quot;Malgun Gothic&quot;"/>
+
+        <!-- ===== 묶음 4개 (언어 / 프레임워크 / DB / 인프라) ===== -->
+        <Static id="sta_lang" taborder="11" text="언어 상위 10" left="20" top="140" width="305" height="24" font="bold 13px/normal &quot;Malgun Gothic&quot;"/>
+        <Grid id="grd_lang" taborder="12" left="20" top="166" width="305" height="270" binddataset="ds_lang" autofittype="col" oncellclick="grdGroup_oncellclick">
+          <Formats>
+            <Format id="default">
+              <Columns>
+                <Column size="30"/>
+                <Column size="95"/>
+                <Column size="80"/>
+                <Column size="52"/>
+                <Column size="48"/>
+              </Columns>
+              <Rows>
+                <Row size="26" band="head"/>
+                <Row size="24"/>
+              </Rows>
+              <Band id="head">
+                <Cell text="순위"/>
+                <Cell col="1" text="기술"/>
+                <Cell col="2" text=""/>
+                <Cell col="3" text="비율"/>
+                <Cell col="4" text="건수"/>
+              </Band>
+              <Band id="body">
+                <Cell text="bind:rank" textAlign="center"/>
+                <Cell col="1" text="bind:name" textAlign="left" tooltiptext="expr:'평균 지원 ' + (avgApply == null ? '-' : avgApply) + '명 / 평균 최대예산 ' + (avgBudget == null ? '-' : avgBudget) + '만원'"/>
+                <Cell col="2" text="bind:bar" displaytype="progressbarcontrol" tooltiptext="expr:'평균 지원 ' + (avgApply == null ? '-' : avgApply) + '명 / 평균 최대예산 ' + (avgBudget == null ? '-' : avgBudget) + '만원'"/>
+                <Cell col="3" text="expr:pct + '%'" textAlign="right"/>
+                <Cell col="4" text="bind:cnt" displaytype="number" textAlign="right"/>
+              </Band>
+            </Format>
+          </Formats>
+        </Grid>
+        <Static id="sta_fw" taborder="13" text="프레임워크 상위 10" left="335" top="140" width="305" height="24" font="bold 13px/normal &quot;Malgun Gothic&quot;"/>
+        <Grid id="grd_fw" taborder="14" left="335" top="166" width="305" height="270" binddataset="ds_fw" autofittype="col" oncellclick="grdGroup_oncellclick">
+          <Formats>
+            <Format id="default">
+              <Columns>
+                <Column size="30"/>
+                <Column size="95"/>
+                <Column size="80"/>
+                <Column size="52"/>
+                <Column size="48"/>
+              </Columns>
+              <Rows>
+                <Row size="26" band="head"/>
+                <Row size="24"/>
+              </Rows>
+              <Band id="head">
+                <Cell text="순위"/>
+                <Cell col="1" text="기술"/>
+                <Cell col="2" text=""/>
+                <Cell col="3" text="비율"/>
+                <Cell col="4" text="건수"/>
+              </Band>
+              <Band id="body">
+                <Cell text="bind:rank" textAlign="center"/>
+                <Cell col="1" text="bind:name" textAlign="left" tooltiptext="expr:'평균 지원 ' + (avgApply == null ? '-' : avgApply) + '명 / 평균 최대예산 ' + (avgBudget == null ? '-' : avgBudget) + '만원'"/>
+                <Cell col="2" text="bind:bar" displaytype="progressbarcontrol" tooltiptext="expr:'평균 지원 ' + (avgApply == null ? '-' : avgApply) + '명 / 평균 최대예산 ' + (avgBudget == null ? '-' : avgBudget) + '만원'"/>
+                <Cell col="3" text="expr:pct + '%'" textAlign="right"/>
+                <Cell col="4" text="bind:cnt" displaytype="number" textAlign="right"/>
+              </Band>
+            </Format>
+          </Formats>
+        </Grid>
+        <Static id="sta_db" taborder="15" text="DB 상위 10" left="650" top="140" width="305" height="24" font="bold 13px/normal &quot;Malgun Gothic&quot;"/>
+        <Grid id="grd_db" taborder="16" left="650" top="166" width="305" height="270" binddataset="ds_db" autofittype="col" oncellclick="grdGroup_oncellclick">
+          <Formats>
+            <Format id="default">
+              <Columns>
+                <Column size="30"/>
+                <Column size="95"/>
+                <Column size="80"/>
+                <Column size="52"/>
+                <Column size="48"/>
+              </Columns>
+              <Rows>
+                <Row size="26" band="head"/>
+                <Row size="24"/>
+              </Rows>
+              <Band id="head">
+                <Cell text="순위"/>
+                <Cell col="1" text="기술"/>
+                <Cell col="2" text=""/>
+                <Cell col="3" text="비율"/>
+                <Cell col="4" text="건수"/>
+              </Band>
+              <Band id="body">
+                <Cell text="bind:rank" textAlign="center"/>
+                <Cell col="1" text="bind:name" textAlign="left" tooltiptext="expr:'평균 지원 ' + (avgApply == null ? '-' : avgApply) + '명 / 평균 최대예산 ' + (avgBudget == null ? '-' : avgBudget) + '만원'"/>
+                <Cell col="2" text="bind:bar" displaytype="progressbarcontrol" tooltiptext="expr:'평균 지원 ' + (avgApply == null ? '-' : avgApply) + '명 / 평균 최대예산 ' + (avgBudget == null ? '-' : avgBudget) + '만원'"/>
+                <Cell col="3" text="expr:pct + '%'" textAlign="right"/>
+                <Cell col="4" text="bind:cnt" displaytype="number" textAlign="right"/>
+              </Band>
+            </Format>
+          </Formats>
+        </Grid>
+        <Static id="sta_infra" taborder="17" text="인프라·서버 상위 10" left="965" top="140" width="305" height="24" font="bold 13px/normal &quot;Malgun Gothic&quot;"/>
+        <Grid id="grd_infra" taborder="18" left="965" top="166" width="305" height="270" binddataset="ds_infra" autofittype="col" oncellclick="grdGroup_oncellclick">
+          <Formats>
+            <Format id="default">
+              <Columns>
+                <Column size="30"/>
+                <Column size="95"/>
+                <Column size="80"/>
+                <Column size="52"/>
+                <Column size="48"/>
+              </Columns>
+              <Rows>
+                <Row size="26" band="head"/>
+                <Row size="24"/>
+              </Rows>
+              <Band id="head">
+                <Cell text="순위"/>
+                <Cell col="1" text="기술"/>
+                <Cell col="2" text=""/>
+                <Cell col="3" text="비율"/>
+                <Cell col="4" text="건수"/>
+              </Band>
+              <Band id="body">
+                <Cell text="bind:rank" textAlign="center"/>
+                <Cell col="1" text="bind:name" textAlign="left" tooltiptext="expr:'평균 지원 ' + (avgApply == null ? '-' : avgApply) + '명 / 평균 최대예산 ' + (avgBudget == null ? '-' : avgBudget) + '만원'"/>
+                <Cell col="2" text="bind:bar" displaytype="progressbarcontrol" tooltiptext="expr:'평균 지원 ' + (avgApply == null ? '-' : avgApply) + '명 / 평균 최대예산 ' + (avgBudget == null ? '-' : avgBudget) + '만원'"/>
+                <Cell col="3" text="expr:pct + '%'" textAlign="right"/>
+                <Cell col="4" text="bind:cnt" displaytype="number" textAlign="right"/>
+              </Band>
+            </Format>
+          </Formats>
+        </Grid>
+
+        <!-- ===== 같이 요구되는 기술 ===== -->
+        <Static id="sta_together" taborder="19" text="같이 요구되는 기술" left="20" top="452" width="150" height="26" font="bold 13px/normal &quot;Malgun Gothic&quot;"/>
+        <Combo id="cbo_tech" taborder="20" left="170" top="452" width="220" height="26" innerdataset="ds_tech" codecolumn="name" datacolumn="label" onitemchanged="cbo_tech_onitemchanged"/>
+        <Static id="sta_togetherDesc" taborder="21" text="" left="400" top="452" width="380" height="26" color="#8a8984"/>
+        <Grid id="grd_together" taborder="22" left="20" top="482" width="760" bottom="20" binddataset="ds_together" autofittype="col">
+          <Formats>
+            <Format id="default">
+              <Columns>
+                <Column size="40"/>
+                <Column size="140"/>
+                <Column size="90"/>
+                <Column size="200"/>
+                <Column size="60"/>
+                <Column size="60"/>
+                <Column size="80"/>
+                <Column size="90"/>
+              </Columns>
+              <Rows>
+                <Row size="26" band="head"/>
+                <Row size="24"/>
+              </Rows>
+              <Band id="head">
+                <Cell text="순위"/>
+                <Cell col="1" text="기술"/>
+                <Cell col="2" text="묶음"/>
+                <Cell col="3" text=""/>
+                <Cell col="4" text="비율"/>
+                <Cell col="5" text="건수"/>
+                <Cell col="6" text="평균 지원"/>
+                <Cell col="7" text="평균 예산(만원)"/>
+              </Band>
+              <Band id="body">
+                <Cell text="bind:rank" textAlign="center"/>
+                <Cell col="1" text="bind:name" textAlign="left"/>
+                <Cell col="2" text="bind:groupName" textAlign="center"/>
+                <Cell col="3" text="bind:bar" displaytype="progressbarcontrol"/>
+                <Cell col="4" text="expr:pct + '%'" textAlign="right"/>
+                <Cell col="5" text="bind:cnt" displaytype="number" textAlign="right"/>
+                <Cell col="6" text="bind:avgApply" textAlign="right"/>
+                <Cell col="7" text="bind:avgBudget" displaytype="number" textAlign="right"/>
+              </Band>
+            </Format>
+          </Formats>
+        </Grid>
+
+        <!-- ===== 지역 ===== -->
+        <Static id="sta_region" taborder="23" text="지역별 공고 비율 (상위 6, 나머지 기타)" left="800" top="452" width="460" height="26" font="bold 13px/normal &quot;Malgun Gothic&quot;"/>
+        <Grid id="grd_region" taborder="24" left="800" top="482" right="20" bottom="20" binddataset="ds_region" autofittype="col">
+          <Formats>
+            <Format id="default">
+              <Columns>
+                <Column size="40"/>
+                <Column size="90"/>
+                <Column size="210"/>
+                <Column size="60"/>
+                <Column size="60"/>
+              </Columns>
+              <Rows>
+                <Row size="26" band="head"/>
+                <Row size="24"/>
+              </Rows>
+              <Band id="head">
+                <Cell text="순위"/>
+                <Cell col="1" text="지역"/>
+                <Cell col="2" text=""/>
+                <Cell col="3" text="비율"/>
+                <Cell col="4" text="건수"/>
+              </Band>
+              <Band id="body">
+                <Cell text="bind:rank" textAlign="center"/>
+                <Cell col="1" text="bind:label" textAlign="left"/>
+                <Cell col="2" text="bind:bar" displaytype="progressbarcontrol"/>
+                <Cell col="3" text="expr:pct + '%'" textAlign="right"/>
+                <Cell col="4" text="bind:cnt" displaytype="number" textAlign="right"/>
+              </Band>
+            </Format>
+          </Formats>
+        </Grid>
+      </Layout>
+    </Layouts>
+
+    <Objects>
+      <Dataset id="ds_kpi">
+        <ColumnInfo>
+          <Column id="totalProjects" type="INT" size="10"/>
+          <Column id="backendProjects" type="INT" size="10"/>
+          <Column id="backendPct" type="BIGDECIMAL" size="10"/>
+          <Column id="topLang" type="STRING" size="100"/>
+          <Column id="topLangPct" type="BIGDECIMAL" size="10"/>
+          <Column id="topDb" type="STRING" size="100"/>
+          <Column id="topDbPct" type="BIGDECIMAL" size="10"/>
+        </ColumnInfo>
+      </Dataset>
+      <Dataset id="ds_lang">
+        <ColumnInfo>
+          <Column id="rank" type="INT" size="3"/>
+          <Column id="name" type="STRING" size="100"/>
+          <Column id="groupName" type="STRING" size="30"/>
+          <Column id="cnt" type="INT" size="10"/>
+          <Column id="pct" type="BIGDECIMAL" size="10"/>
+          <Column id="bar" type="INT" size="3"/>
+          <Column id="avgApply" type="BIGDECIMAL" size="10"/>
+          <Column id="avgBudget" type="INT" size="10"/>
+        </ColumnInfo>
+      </Dataset>
+      <Dataset id="ds_fw">
+        <ColumnInfo>
+          <Column id="rank" type="INT" size="3"/>
+          <Column id="name" type="STRING" size="100"/>
+          <Column id="groupName" type="STRING" size="30"/>
+          <Column id="cnt" type="INT" size="10"/>
+          <Column id="pct" type="BIGDECIMAL" size="10"/>
+          <Column id="bar" type="INT" size="3"/>
+          <Column id="avgApply" type="BIGDECIMAL" size="10"/>
+          <Column id="avgBudget" type="INT" size="10"/>
+        </ColumnInfo>
+      </Dataset>
+      <Dataset id="ds_db">
+        <ColumnInfo>
+          <Column id="rank" type="INT" size="3"/>
+          <Column id="name" type="STRING" size="100"/>
+          <Column id="groupName" type="STRING" size="30"/>
+          <Column id="cnt" type="INT" size="10"/>
+          <Column id="pct" type="BIGDECIMAL" size="10"/>
+          <Column id="bar" type="INT" size="3"/>
+          <Column id="avgApply" type="BIGDECIMAL" size="10"/>
+          <Column id="avgBudget" type="INT" size="10"/>
+        </ColumnInfo>
+      </Dataset>
+      <Dataset id="ds_infra">
+        <ColumnInfo>
+          <Column id="rank" type="INT" size="3"/>
+          <Column id="name" type="STRING" size="100"/>
+          <Column id="groupName" type="STRING" size="30"/>
+          <Column id="cnt" type="INT" size="10"/>
+          <Column id="pct" type="BIGDECIMAL" size="10"/>
+          <Column id="bar" type="INT" size="3"/>
+          <Column id="avgApply" type="BIGDECIMAL" size="10"/>
+          <Column id="avgBudget" type="INT" size="10"/>
+        </ColumnInfo>
+      </Dataset>
+      <Dataset id="ds_together">
+        <ColumnInfo>
+          <Column id="rank" type="INT" size="3"/>
+          <Column id="name" type="STRING" size="100"/>
+          <Column id="groupName" type="STRING" size="30"/>
+          <Column id="cnt" type="INT" size="10"/>
+          <Column id="pct" type="BIGDECIMAL" size="10"/>
+          <Column id="bar" type="INT" size="3"/>
+          <Column id="avgApply" type="BIGDECIMAL" size="10"/>
+          <Column id="avgBudget" type="INT" size="10"/>
+        </ColumnInfo>
+      </Dataset>
+      <Dataset id="ds_region">
+        <ColumnInfo>
+          <Column id="rank" type="INT" size="3"/>
+          <Column id="label" type="STRING" size="50"/>
+          <Column id="cnt" type="INT" size="10"/>
+          <Column id="pct" type="BIGDECIMAL" size="10"/>
+          <Column id="bar" type="INT" size="3"/>
+        </ColumnInfo>
+      </Dataset>
+      <Dataset id="ds_tech">
+        <ColumnInfo>
+          <Column id="name" type="STRING" size="100"/>
+          <Column id="label" type="STRING" size="130"/>
+        </ColumnInfo>
+      </Dataset>
+      <Dataset id="ds_base">
+        <ColumnInfo>
+          <Column id="tech" type="STRING" size="100"/>
+          <Column id="groupName" type="STRING" size="30"/>
+          <Column id="baseCount" type="INT" size="10"/>
+        </ColumnInfo>
+      </Dataset>
+    </Objects>
+
+    <Script type="xscript5.1"><![CDATA[
+/**
+ * 백엔드 기술 수요 통계 화면
+ *  - 서버 API: /nx/stats (화면 열 때 한 번), /nx/stats/together (기술 고를 때)
+ *  - 공고 목록 화면(frmProjectList)의 [통계 보기] 버튼으로 팝업처럼 열린다
+ *
+ * 막대: Grid 셀 displaytype="progressbarcontrol"이 0~100 값을 막대로 그린다.
+ *       서버가 목록 안 1등을 100으로 맞춘 값(bar)을 보내 준다.
+ * 묶음 그리드 4개는 같은 이벤트 함수(grdGroup_oncellclick)를 같이 쓴다.
+ */
+
+this.Form_onload = function(obj, e)
+{
+    // 인자가 없으면 넥사크로는 GET으로 보낸다 (서버 /nx/stats는 GET도 받는다)
+    this.transaction("stats", "svc::nx/stats", "",
+        "ds_kpi=ds_kpi ds_lang=ds_lang ds_fw=ds_fw ds_db=ds_db ds_infra=ds_infra ds_region=ds_region ds_tech=ds_tech",
+        "", "fnCallback");
+};
+
+/* 같이 요구되는 기술 불러오기 */
+this.fnLoadTogether = function(tech)
+{
+    if (tech == null || tech === "") return;
+    this.cbo_tech.set_value(tech);
+    this.sta_togetherDesc.set_text("불러오는 중");
+    this.transaction("together", "svc::nx/stats/together", "",
+        "ds_base=ds_base ds_together=ds_together",
+        "tech=" + nexacro.wrapQuote(String(tech)), "fnCallback");
+};
+
+/* 묶음 그리드에서 기술을 누르면 그 기술 기준으로 바꾼다 */
+this.grdGroup_oncellclick = function(obj, e)
+{
+    var ds = obj.getBindDataset();
+    if (e.row < 0 || ds.rowcount == 0) return;
+    this.fnLoadTogether(ds.getColumn(e.row, "name"));
+};
+
+/* 콤보에서 기술을 고르면 */
+this.cbo_tech_onitemchanged = function(obj, e)
+{
+    this.fnLoadTogether(e.postvalue);
+};
+
+this.btn_close_onclick = function(obj, e)
+{
+    this.close();
+};
+
+/* 1234 -> "1,234" */
+this.fnComma = function(n)
+{
+    if (n == null || n === "") return "-";
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
+this.fnCallback = function(svcId, errorCode, errorMsg)
+{
+    if (errorCode < 0) {
+        this.alert("[" + svcId + "] " + errorMsg);
+        return;
+    }
+
+    switch (svcId) {
+        case "stats":
+            var k = this.ds_kpi;
+            this.sta_kTotal.set_text(this.fnComma(k.getColumn(0, "totalProjects")) + "건");
+            this.sta_kBackend.set_text(this.fnComma(k.getColumn(0, "backendProjects")) + "건 (" + k.getColumn(0, "backendPct") + "%)");
+            this.sta_kLang.set_text((k.getColumn(0, "topLang") || "-") + "  " + (k.getColumn(0, "topLangPct") || 0) + "%");
+            this.sta_kDb.set_text((k.getColumn(0, "topDb") || "-") + "  " + (k.getColumn(0, "topDbPct") || 0) + "%");
+
+            // 처음에는 1위 언어 기준으로 "같이 요구되는 기술"을 보여 준다
+            this.fnLoadTogether(k.getColumn(0, "topLang"));
+            break;
+
+        case "together":
+            var b = this.ds_base;
+            this.sta_togetherDesc.set_text(b.getColumn(0, "tech") + " 공고 " + this.fnComma(b.getColumn(0, "baseCount"))
+                + "건 중에서 같이 요구된 비율 (묶음이 기타인 건 분류 목록에 없는 기술)");
+            break;
+    }
+};
+]]></Script>
+  </Form>
+</FDL>

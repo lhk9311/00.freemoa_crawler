@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * 통계 API. 화면은 src/main/resources/static/stats.html (서버 실행 후 http://localhost:8080/stats.html)
- * 같은 서버(8080)에서 나가는 페이지라 CORS 설정이 필요 없다.
+ * 통계 REST API (JSON). Postman, 테스트, 다른 화면에서 쓴다.
+ * 넥사크로 통계 화면(frmStats.xfdl)은 같은 StatsService를 XML로 내보내는 StatsScreenController(/nx/stats)를 쓴다.
  */
 @RestController
 @RequestMapping("/api/stats")

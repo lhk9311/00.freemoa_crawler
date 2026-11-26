@@ -431,7 +431,7 @@
                 "stats"
               ]
             },
-            "description": "언어/프레임워크/DB/인프라 묶음별 기술 순위 + 지역. 화면은 /stats.html"
+            "description": "언어/프레임워크/DB/인프라 묶음별 기술 순위 + 지역. 넥사크로 화면용은 /nx/stats (XML)"
           },
           "event": [
             {

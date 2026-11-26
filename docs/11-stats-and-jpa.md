@@ -2,19 +2,19 @@
 
 ## 1. 통계 화면 (백엔드 기술 수요)
 
-- 화면: 서버 실행 후 http://localhost:8080/stats.html
-- 데이터
-  - `GET /api/stats`: 언어 / 프레임워크 / DB / 인프라·서버 묶음별 기술 순위, 지역 비율
-  - `GET /api/stats/together?tech=Java`: Java 공고에서 같이 요구된 기술 순위
-- 화면: 차트 라이브러리 없이 HTML 막대 목록(이름 · 막대 · 비율 · 건수 한 줄).
-  Spring Boot는 `src/main/resources/static/` 아래 파일을 그대로 내보내서 화면용 컨트롤러가 필요 없다.
-- 11/23 변경: 예산 구간, 월별 신규 공고를 빼고 백엔드 개발자가 궁금한 기술 위주로 바꿨다.
+- 화면: 넥사크로 `nexacro/frmStats.xfdl`. 공고 목록 화면의 [통계 보기] 버튼으로 새 창이 열린다
+- 데이터 (넥사크로 XML)
+  - `/nx/stats`: 숫자 카드, 언어 / 프레임워크 / DB / 인프라·서버 순위, 지역 비율, 기술 콤보 목록
+  - `/nx/stats/together` (인자 `tech=Java`): Java 공고에서 같이 요구된 기술 순위
+- 같은 데이터를 JSON으로도 낸다: `GET /api/stats`, `GET /api/stats/together?tech=Java` (Postman, 테스트용)
+- 11/23: 예산 구간, 월별 신규 공고를 빼고 백엔드 개발자가 궁금한 기술 위주로 바꿨다
+- 11/26: 처음엔 Spring Boot `static/stats.html`(HTML + 차트 라이브러리)로 만들었다가, 화면 기술을 넥사크로 하나로 통일했다
 
 ### 흐름
 ```
-stats.html
-  └─ fetch /api/stats
-       └─ StatsController.stats()
+frmStats.xfdl  Form_onload
+  └─ transaction("stats", "svc::nx/stats", ...)           인자가 없어서 GET
+       └─ StatsScreenController.stats()
             └─ StatsService.getStats()
                  ├─ StatsMapper.countProjects()          전체 공고 수
                  ├─ StatsMapper.selectProjectSkills()    공고 x 기술 태그 원본 (수만 줄)
@@ -23,7 +23,20 @@ stats.html
                  │         ├─ 공고별로 기술 이름 중복 제거
                  │         └─ 기술별 공고 수, 평균 지원자, 평균 예산
                  └─ StatsMapper.selectRegionStats()      지역 비율 (윈도우 함수)
+       <- ds_kpi, ds_lang, ds_fw, ds_db, ds_infra, ds_region, ds_tech
+  └─ fnCallback("stats") -> 숫자 카드 채우기 -> 1위 언어로 fnLoadTogether()
+       └─ transaction("together", "svc::nx/stats/together", ..., "tech='Java'")
 ```
+
+### 넥사크로에서 막대 그리기
+차트 컴포넌트 없이 Grid 셀 하나로 막대를 그린다.
+```xml
+<Cell col="2" text="bind:bar" displaytype="progressbarcontrol"/>
+```
+`progressbarcontrol`은 0~100 값을 막대 길이로 그린다. 비율(pct)을 그대로 넣으면 1등이 30%일 때 막대가 30%까지만 차서
+차이가 잘 안 보인다. 그래서 서버(`StatsScreenController.bar()`)가 목록 안 1등을 100으로 맞춘 값(bar)을 따로 계산해서 보낸다.
+
+묶음 그리드 4개는 이벤트 함수 하나(`grdGroup_oncellclick`)를 같이 쓴다. 누른 그리드의 Dataset은 `obj.getBindDataset()`으로 꺼낸다.
 
 ### 왜 기술 묶기를 SQL이 아니라 자바에서 하나
 프리모아 기술 태그는 사람이 직접 적어서 `PHP`, `php 8.5`, `php7`처럼 버전만 다른 표기가 많다.
@@ -53,12 +66,11 @@ add(TechGroup.DATABASE, "Cassandra", "CASSANDRA");
 ### 화면 설계에서 정한 것
 | 결정 | 이유 |
 |---|---|
-| 강조색 1개(teal) + 회색 | 시리즈가 하나라 색을 여러 개 쓸 이유가 없다. 분류표에 없는 "기타" 기술만 회색 |
+| 막대 색은 넥사크로 기본 테마 그대로 | 시리즈가 하나라 색을 여러 개 쓸 이유가 없다 |
 | 도넛 대신 순위 막대 목록 | 비율끼리 비교하려면 같은 기준선에서 시작하는 막대가 더 정확하게 읽힌다 |
 | 기술 이름을 누르면 "같이 요구되는 기술"이 바뀜 | 순위에서 바로 "그럼 Java 공고는 뭘 같이 원하지?"로 이어서 볼 수 있게 |
-| 평균 지원자, 평균 예산은 마우스 올림 / 표로 보기 | 막대 한 줄에 숫자가 많으면 읽기 어렵다. 비율과 건수만 줄에 두고 나머지는 필요할 때 |
+| 평균 지원자, 평균 예산은 묶음 그리드에선 마우스 올림(tooltiptext), 같이 요구되는 기술 그리드에선 컬럼 | 좁은 그리드에 숫자가 많으면 읽기 어렵다 |
 | 숫자 카드 4개 | 한 숫자로 끝나는 정보(전체 건수, 1위 언어)는 차트보다 숫자 하나가 빠르게 읽힌다 |
-| 다크 모드 | OS 설정을 따라감. 색은 어두운 배경 기준으로 다시 골라 대비 확인 |
 
 ### 윈도우 함수
 

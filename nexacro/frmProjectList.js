@@ -2,6 +2,7 @@
  * 프리모아 공고 조회 화면
  *  - 서버 주소: TypeDefinition > Services 의 svc (http://localhost:8080/)
  *  - 서버 API : /nx/skills, /nx/projects/search, /nx/crawl, /nx/crawl/incremental, /nx/crawl/full, /nx/crawl/run
+ *  - [통계 보기] 버튼 -> frmStats.xfdl (백엔드 기술 수요)
  */
 
 this.page = 1;
@@ -42,6 +43,17 @@ this.grd_list_oncelldblclick = function(obj, e)
     } else {
         window.open(url, "_blank");
     }
+};
+
+/* [통계 보기] 백엔드 기술 수요 화면을 새 창(팝업)으로 연다
+ *  - "Base::"는 Studio TypeDefinition > Services 에 등록된 폼 폴더의 prefix다. 프로젝트마다 다를 수 있다
+ *  - nexacro.open(창이름, 폼URL, 부모프레임, 넘길값, 창옵션, left, top, width, height, 여는폼) */
+this.STATS_FORM_URL = "Base::frmStats.xfdl";
+
+this.btn_stats_onclick = function(obj, e)
+{
+    nexacro.open("popStats", this.STATS_FORM_URL, this.getOwnerFrame(), {},
+                 "showtitlebar=true showstatusbar=false resizable=true", 40, 40, 1280, 720, this);
 };
 
 /* 조회 */

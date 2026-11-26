@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * 넥사크로 화면 API(/nx/**)에서 난 예외를 넥사크로 형식(ErrorCode = -1)으로 바꿔준다.
  * 화면 스크립트의 콜백 함수에서 errorCode < 0 이면 errorMsg를 alert로 띄우면 된다.
  *
- * assignableTypes로 범위를 이 화면 컨트롤러로 제한했다.
+ * assignableTypes로 범위를 화면 컨트롤러(/nx/**)로 제한했다.
  * 범위를 안 주면 /api/** (JSON) 에러까지 XML로 바뀌어버린다.
  */
-@RestControllerAdvice(assignableTypes = ProjectScreenController.class)
+@RestControllerAdvice(assignableTypes = {ProjectScreenController.class, StatsScreenController.class})
 public class NexacroExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(NexacroExceptionHandler.class);

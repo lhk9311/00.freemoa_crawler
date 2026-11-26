@@ -99,8 +99,10 @@ freemoa-crawler
 ├── docs/ ............................... 단계별 설계 이유·개념 정리 (아래 문서 목록)
 ├── http/crawl.http ..................... IntelliJ에서 바로 API 호출              [3→6]
 ├── nexacro/
-│   ├── frmProjectList.xfdl ............. 화면 전체 (Studio로 Import)             [5→6]
-│   ├── frmProjectList.js ............... 화면 스크립트 (xfdl 안 스크립트와 동일)  [5→6]
+│   ├── frmProjectList.xfdl ............. 공고 목록/검색/수집 화면 (Studio로 Import) [5→6]
+│   ├── frmProjectList.js ............... 위 화면 스크립트 (xfdl 안 스크립트와 동일)
+│   ├── frmStats.xfdl ................... 백엔드 기술 수요 통계 화면 (목록의 [통계 보기])
+│   ├── frmStats.js ..................... 위 화면 스크립트 (xfdl 안 스크립트와 동일)
 │   └── datasets.xml .................... 화면 Dataset 컬럼 정의                  [5]
 ├── src/main/java/com/lhk/freemoa/
 │   ├── FreemoaCrawlerApplication.java .. 스프링 부트 시작점
