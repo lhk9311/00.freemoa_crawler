@@ -22,7 +22,7 @@
         <Button id="btn_next" taborder="13" text="다음" left="1200" top="58" width="60" height="26" onclick="btn_next_onclick"/>
 
         <!-- ===== 목록 ===== -->
-        <Grid id="grd_list" taborder="14" left="20" top="92" right="20" bottom="64" binddataset="ds_list" autofittype="col">
+        <Grid id="grd_list" taborder="14" left="20" top="92" right="20" bottom="64" binddataset="ds_list" autofittype="col" oncelldblclick="grd_list_oncelldblclick">
           <Formats>
             <Format id="default">
               <Columns>
@@ -159,6 +159,24 @@ this.fnLoadSkills = function()
     // transaction(서비스ID, URL, 보낼Dataset, 받을Dataset(화면=서버), 인자, 콜백)
     // 인자가 없으면 넥사크로는 GET으로 보낸다 (그래서 서버 /nx/skills는 GET도 받는다)
     this.transaction("skills", "svc::nx/skills", "", "ds_skill=ds_skill", "", "fnCallback");
+};
+
+/* 목록 더블클릭: 프리모아 원문 열기 (로그인은 브라우저에서 직접)
+ *  - 주소 모양은 상세 API 응답의 queryString(page, pno, first_pno)을 보고 맞춘 것
+ *  - QuickView/NRE(Runtime)는 system.execBrowser, 웹 브라우저로 띄웠을 땐 window.open */
+this.FREEMOA_DETAIL_URL = "https://www.freemoa.net/m4/s41?page=1&pno=";
+
+this.grd_list_oncelldblclick = function(obj, e)
+{
+    var projIdx = this.ds_list.getColumn(e.row, "projIdx");
+    if (projIdx == null) return;
+
+    var url = this.FREEMOA_DETAIL_URL + projIdx + "&first_pno=" + projIdx;
+    if (nexacro._Browser == "Runtime") {
+        system.execBrowser(url);
+    } else {
+        window.open(url, "_blank");
+    }
 };
 
 /* 조회 */

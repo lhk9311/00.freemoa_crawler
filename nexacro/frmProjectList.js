@@ -26,6 +26,24 @@ this.fnLoadSkills = function()
     this.transaction("skills", "svc::nx/skills", "", "ds_skill=ds_skill", "", "fnCallback");
 };
 
+/* 목록 더블클릭: 프리모아 원문 열기 (로그인은 브라우저에서 직접)
+ *  - 주소 모양은 상세 API 응답의 queryString(page, pno, first_pno)을 보고 맞춘 것
+ *  - QuickView/NRE(Runtime)는 system.execBrowser, 웹 브라우저로 띄웠을 땐 window.open */
+this.FREEMOA_DETAIL_URL = "https://www.freemoa.net/m4/s41?page=1&pno=";
+
+this.grd_list_oncelldblclick = function(obj, e)
+{
+    var projIdx = this.ds_list.getColumn(e.row, "projIdx");
+    if (projIdx == null) return;
+
+    var url = this.FREEMOA_DETAIL_URL + projIdx + "&first_pno=" + projIdx;
+    if (nexacro._Browser == "Runtime") {
+        system.execBrowser(url);
+    } else {
+        window.open(url, "_blank");
+    }
+};
+
 /* 조회 */
 this.btn_search_onclick = function(obj, e)
 {
