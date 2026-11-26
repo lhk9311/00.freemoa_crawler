@@ -2,7 +2,7 @@
 
 ## 1. 통계 화면 (백엔드 기술 수요)
 
-- 화면: 넥사크로 `nexacro/frmStats.xfdl`. 공고 목록 화면의 [통계 보기] 버튼으로 새 창이 열린다
+- 화면: 넥사크로 `nexacro/freemoa_nx/Base/frmStats.xfdl`. 공고 목록 화면의 [통계 보기] 버튼으로 새 창이 열린다
 - 데이터 (넥사크로 XML)
   - `/nx/stats`: 숫자 카드, 언어 / 프레임워크 / DB / 인프라·서버 순위, 지역 비율, 기술 콤보 목록
   - `/nx/stats/together` (인자 `tech=Java`): Java 공고에서 같이 요구된 기술 순위

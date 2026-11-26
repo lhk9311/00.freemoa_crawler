@@ -202,8 +202,8 @@ crawler:
 그래서 수집 버튼은 서버가 쓰지 않는 인자(`type=FULL`, `type=INCREMENTAL`)라도 항상 하나 이상 보낸다.
 
 ### Studio에 반영
-Studio 프로젝트의 폼(`C:\nexacro\projects\freemoa_nx\Base\frmProjectList.xfdl`)은 Import 때 복사된 것이라 저장소 파일이 바뀌어도 자동으로 안 바뀐다.
-Studio에서 폼 탭을 닫고 → 저장소의 `nexacro/frmProjectList.xfdl`을 위 경로에 덮어쓰기 → 폼을 다시 연다.
+11/26부터 Studio 프로젝트가 저장소 안(`nexacro/freemoa_nx`)에 있어서 덮어쓸 필요가 없다.
+Studio에서 폼 탭을 닫았다가 다시 열고 Ctrl+S(Generate)만 하면 된다. (예전 방식은 docs/05의 "폼 Import" 참고)
 
 ## 5. 로직 비교: 전체 수집 vs 신규 수집
 

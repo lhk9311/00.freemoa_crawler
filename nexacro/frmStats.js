@@ -4,7 +4,9 @@
  *  - 공고 목록 화면(frmProjectList)의 [통계 보기] 버튼으로 팝업처럼 열린다
  *
  * 막대: Grid 셀 displaytype="progressbarcontrol"이 0~100 값을 막대로 그린다.
- *       서버가 목록 안 1등을 100으로 맞춘 값(bar)을 보내 준다.
+ *       서버가 목록 안 1등을 100으로 맞춘 값(bar)을 보내 준다. 실제 비율은 옆 "비율" 칸.
+ *       progressbarsmooth="true" : 블록으로 끊긴 막대 대신 이어진 막대
+ *       color="transparent"      : 막대 위에 겹쳐 찍히는 숫자(bar 값)를 안 보이게
  * 묶음 그리드 4개는 같은 이벤트 함수(grdGroup_oncellclick)를 같이 쓴다.
  */
 
@@ -75,7 +77,7 @@ this.fnCallback = function(svcId, errorCode, errorMsg)
         case "together":
             var b = this.ds_base;
             this.sta_togetherDesc.set_text(b.getColumn(0, "tech") + " 공고 " + this.fnComma(b.getColumn(0, "baseCount"))
-                + "건 중에서 같이 요구된 비율 (묶음이 기타인 건 분류 목록에 없는 기술)");
+                + "건 중 같이 요구된 비율 · 기타 = 분류 목록에 없는 기술");
             break;
     }
 };

@@ -11,7 +11,9 @@
 | CORS | 서버 | `config/WebConfig`, `application.yml`의 `nexacro.allowed-origins` |
 | Dataset 정의 | 화면 | `nexacro/datasets.xml` |
 | 화면 스크립트 | 화면 | `nexacro/frmProjectList.js` |
-| 화면 전체 (레이아웃 + Dataset + 스크립트) | 화면 | `nexacro/frmProjectList.xfdl` (Studio로 Import) |
+| 화면 전체 (레이아웃 + Dataset + 스크립트) | 화면 | `nexacro/freemoa_nx/Base/frmProjectList.xfdl` |
+| 통계 화면 | 화면 | `nexacro/freemoa_nx/Base/frmStats.xfdl` (목록의 [통계 보기]) |
+| Studio 프로젝트 | 화면 | `nexacro/freemoa_nx/freemoa_nx.xprj` |
 
 ### 왜 X-API 라이브러리를 안 썼나
 실무에서는 투비소프트의 X-API(또는 UI Adapter) jar로 `PlatformData`, `DataSet` 객체를 다룬다.
@@ -41,7 +43,7 @@ curl -X POST http://localhost:8080/nx/projects/search ^
 
 ## Studio 작업 순서 (실제로 한 순서)
 
-화면은 `nexacro/frmProjectList.xfdl` 한 파일에 레이아웃, Dataset, 스크립트가 모두 들어 있다.
+화면은 `nexacro/freemoa_nx/Base/frmProjectList.xfdl` 한 파일에 레이아웃, Dataset, 스크립트가 모두 들어 있다.
 컴포넌트를 하나씩 배치하지 않고 이 파일을 Import 해서 쓴다.
 
 ### 1. 프로젝트 생성
@@ -65,7 +67,7 @@ Project Explorer > `TypeDefinition` > **Services** 더블클릭 > 아래 User Se
 
 주의: `TypeDefinition` 아래 **Objects**를 열면 컴포넌트 목록 창이 뜬다. 서비스는 **Services**다.
 
-### 3. 폼 Import
+### 3. 폼 Import (11/26 이전 방식. 지금은 아래 "저장소 안 Studio 프로젝트" 참고)
 Project Explorer > `Base` 우클릭 > **Import** > 파일 이름에
 `C:\Users\lhk93\IdeaProjects\freemoa-crawler\nexacro\frmProjectList.xfdl` 입력 > 열기
 
@@ -75,6 +77,20 @@ Output 창에 `File Import : Success 1, Fail 0`, `Successfully generated file : 
 Import는 **복사**다. 이후 Studio에서 고치는 파일은
 `C:\nexacro\projects\freemoa_nx\Base\frmProjectList.xfdl`이고, 저장소의 `nexacro/frmProjectList.xfdl`과 자동 동기화되지 않는다.
 화면을 고쳤으면 저장소 쪽으로 다시 복사해서 커밋한다.
+
+#### 11/26부터: 저장소 안 Studio 프로젝트
+파일이 두 군데(저장소, Studio)에 있어서 매번 덮어써야 하는 문제 때문에, Studio 프로젝트 폴더를 저장소 안으로 옮겼다.
+```
+freemoa-crawler/nexacro/
+├─ freemoa_nx/                 Studio 프로젝트 (File > Open Project로 freemoa_nx.xprj 열기)
+│   ├─ Base/frmProjectList.xfdl  git am이 바로 이 파일을 고친다
+│   ├─ Base/frmStats.xfdl
+│   └─ typedefinition.xml 등
+├─ frmProjectList.js, frmStats.js   xfdl 안 스크립트를 GitHub에서 읽기 쉽게 뽑아 둔 사본
+└─ datasets.xml
+```
+이제 `git am` 한 번이면 Studio 쪽도 바뀐다. Studio에서 폼을 다시 열고 Ctrl+S(Generate)만 하면 된다.
+Generate 할 때마다 다시 만들어지는 `*.geninfo`는 `.gitignore`에 넣었다.
 
 Source 탭에 XML을 다시 붙여넣을 필요는 없다.
 
