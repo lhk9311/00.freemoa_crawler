@@ -1,3 +1,6 @@
+# 넥사크로 Studio가 Generate 할 때마다 다시 만드는 파일
+*.geninfo
+
 # Maven
 target/
 
